@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,10 +40,10 @@ const Index = () => {
       const rowValues = Object.values(row);
       
       // Mapear baseado na posição das colunas conforme a imagem
-      const codigo = rowValues[0] || `V${String(index + 1).padStart(3, '0')}`;
-      const cliente = rowValues[1] || 'Cliente não informado';
-      const valorRecebido = parseFloat(rowValues[5]) || 0; // Coluna "Valor Recebido"
-      const formaPagamento = rowValues[6] || 'Não informado'; // Coluna "Forma de Pagamento"
+      const codigo = rowValues[0] ? String(rowValues[0]) : `V${String(index + 1).padStart(3, '0')}`;
+      const cliente = rowValues[1] ? String(rowValues[1]) : 'Cliente não informado';
+      const valorRecebido = parseFloat(String(rowValues[5] || 0)) || 0; // Coluna "Valor Recebido"
+      const formaPagamento = rowValues[6] ? String(rowValues[6]) : 'Não informado'; // Coluna "Forma de Pagamento"
       
       // Para a data, vamos converter o número serial do Excel para data
       let dataFormatada = new Date().toLocaleDateString('pt-BR');
@@ -54,11 +55,11 @@ const Index = () => {
 
       return {
         id: index + 1,
-        codigo: codigo.toString(),
-        cliente: cliente.toString(),
+        codigo: codigo,
+        cliente: cliente,
         valor: valorRecebido,
         data: dataFormatada,
-        formaPagamento: formaPagamento.toString()
+        formaPagamento: formaPagamento
       };
     }).filter(item => item.valor > 0); // Filtrar apenas vendas com valor
 
