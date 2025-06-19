@@ -22,14 +22,72 @@ const Index = () => {
   const processExcelData = (jsonData) => {
     console.log("Dados brutos do Excel:", jsonData);
     
-    // Pegar todas as linhas exceto cabeçalho e total
-    const dataRows = jsonData.filter((row, index) => {
-      // Pular primeira linha (cabeçalho)
-      if (index === 0) return false;
+    // Encontrar o índice do cabeçalho
+    let headerRowIndex = -1;
+    for (let i = 0; i < jsonData.length; i++) {
+      const row = jsonData[i];
+      const values = Object.values(row);
+      // Procurar por uma linha que contenha palavras-chave do cabeçalho
+      const rowText = values.join(' ').toUpperCase();
+      if (rowText.includes('CÓDIGO') || rowText.includes('CLIENTE') || rowText.includes('FORMA DE PAGAMENTO')) {
+        headerRowIndex = i;
+        break;
+      }
+    }
+
+    console.log("Índice do cabeçalho encontrado:", headerRowIndex);
+
+    // Se não encontrou cabeçalho, assumir primeira linha
+    if (headerRowIndex === -1) {
+      headerRowIndex = 0;
+    }
+
+    // Extrair cabeçalhos
+    const headerRow = jsonData[headerRowIndex];
+    const headers = Object.values(headerRow);
+    console.log("Cabeçalhos encontrados:", headers);
+
+    // Identificar colunas importantes
+    let codigoColIndex = -1;
+    let clienteColIndex = -1;
+    let valorColIndex = -1;
+    let formaPagamentoColIndex = -1;
+    let dataColIndex = -1;
+
+    headers.forEach((header, index) => {
+      const headerText = String(header || '').toUpperCase();
       
-      // Verificar se a linha tem dados válidos (não é linha de total)
+      if (headerText.includes('CÓDIGO')) {
+        codigoColIndex = index;
+      } else if (headerText.includes('CLIENTE')) {
+        clienteColIndex = index;
+      } else if (headerText.includes('VALOR RECEBIDO') || (headerText.includes('VALOR') && headerText.includes('RECEBIDO'))) {
+        valorColIndex = index;
+      } else if (headerText.includes('FORMA DE PAGAMENTO') || headerText === 'FORMA DE PAGAMENTO') {
+        formaPagamentoColIndex = index;
+      } else if (headerText.includes('DATA')) {
+        dataColIndex = index;
+      }
+    });
+
+    console.log("Índices das colunas:", {
+      codigoColIndex,
+      clienteColIndex, 
+      valorColIndex,
+      formaPagamentoColIndex,
+      dataColIndex
+    });
+
+    // Pegar todas as linhas de dados (exceto cabeçalho e total)
+    const dataRows = jsonData.slice(headerRowIndex + 1).filter((row, index) => {
       const rowValues = Object.values(row);
       const firstColumn = rowValues[0];
+      
+      // Verificar se não é linha de total
+      const rowText = rowValues.join(' ').toUpperCase();
+      if (rowText.includes('TOTAL')) {
+        return false;
+      }
       
       // Se a primeira coluna é um número válido, é uma linha de dados
       return firstColumn && 
@@ -40,67 +98,33 @@ const Index = () => {
     console.log("Linhas de dados filtradas:", dataRows);
     console.log("Número de linhas encontradas:", dataRows.length);
 
-    // Função para extrair a forma de pagamento da string completa
+    // Função para extrair a forma de pagamento
     const extrairFormaPagamento = (textoCompleto) => {
       if (!textoCompleto || typeof textoCompleto !== 'string') {
         return 'Não informado';
       }
 
       const texto = textoCompleto.toUpperCase().trim();
-      console.log("Analisando texto:", texto);
+      console.log("Analisando forma de pagamento:", texto);
       
-      // Se contém hífens, pegar a última parte (forma de pagamento real)
-      if (texto.includes(' - ')) {
-        const partes = texto.split(' - ');
-        const ultimaParte = partes[partes.length - 1].trim();
-        console.log("Última parte encontrada:", ultimaParte);
-        
-        // Mapear formas de pagamento conhecidas da última parte
-        const mapeamentoFormas = {
-          'PIX': 'PIX',
-          'VISA': 'Visa',
-          'MASTERCARD': 'Mastercard',
-          'MASTERCARD_MAESTRO': 'Mastercard',
-          'VISA_ELECTRON': 'Visa Electron',
-          'ELO': 'Elo',
-          'CARTEIRA': 'Carteira Digital',
-          'DÉBITO': 'Débito',
-          'CRÉDITO': 'Crédito'
-        };
-        
-        // Verificar se a última parte corresponde a uma forma conhecida
-        for (const [chave, valor] of Object.entries(mapeamentoFormas)) {
-          if (ultimaParte.includes(chave)) {
-            console.log(`Mapeamento encontrado: ${chave} -> ${valor}`);
-            return valor;
-          }
-        }
-        
-        // Se não encontrou mapeamento, retornar a última parte limpa
-        return ultimaParte;
-      }
-      
-      // Para casos sem hífen (como "Delivery - Dinheiro" que vira "Dinheiro")
-      const formasSimples = {
-        'DINHEIRO': 'Dinheiro',
+      // Mapear formas de pagamento específicas
+      const formasPagamento = {
         'PIX': 'PIX',
+        'PICPAY': 'PicPay',
+        'DINHEIRO': 'Dinheiro', 
         'DÉBITO': 'Débito',
-        'CRÉDITO': 'Crédito',
-        'VISA': 'Visa',
-        'MASTERCARD': 'Mastercard',
-        'ELO': 'Elo',
-        'CARTEIRA': 'Carteira Digital'
+        'CRÉDITO': 'Crédito'
       };
-      
-      // Procurar por formas de pagamento no texto completo
-      for (const [chave, valor] of Object.entries(formasSimples)) {
+
+      // Procurar por cada forma de pagamento no texto
+      for (const [chave, valor] of Object.entries(formasPagamento)) {
         if (texto.includes(chave)) {
-          console.log(`Forma simples encontrada: ${chave} -> ${valor}`);
+          console.log(`Forma de pagamento encontrada: ${chave} -> ${valor}`);
           return valor;
         }
       }
 
-      console.log("Nenhum mapeamento encontrado, retornando texto original");
+      console.log("Nenhuma forma conhecida encontrada, retornando texto original");
       return textoCompleto.trim();
     };
 
@@ -109,48 +133,65 @@ const Index = () => {
       const rowValues = Object.values(row);
       console.log(`Linha ${index + 1}:`, rowValues);
       
-      // Mapear baseado na estrutura da planilha
-      const codigo = rowValues[0] ? String(rowValues[0]) : `V${String(index + 1).padStart(3, '0')}`;
-      const cliente = rowValues[1] ? String(rowValues[1]) : 'Cliente não informado';
+      // Extrair dados usando os índices identificados
+      const codigo = codigoColIndex >= 0 ? String(rowValues[codigoColIndex] || '') : `V${String(index + 1).padStart(3, '0')}`;
+      const cliente = clienteColIndex >= 0 ? String(rowValues[clienteColIndex] || '') : 'Cliente não informado';
       
-      // Valor deve estar em uma das colunas intermediárias - vamos procurar por números que parecem valores
+      // Valor recebido
       let valorRecebido = 0;
-      for (let i = 2; i < rowValues.length; i++) {
-        const value = parseFloat(String(rowValues[i] || 0));
-        // Procurar por valores que fazem sentido (entre 1 e 100000)
-        if (!isNaN(value) && value > 0 && value < 100000) {
-          valorRecebido = value;
-          break;
+      if (valorColIndex >= 0) {
+        valorRecebido = parseFloat(String(rowValues[valorColIndex] || 0));
+      } else {
+        // Fallback: procurar por valores numéricos
+        for (let i = 2; i < rowValues.length; i++) {
+          const value = parseFloat(String(rowValues[i] || 0));
+          if (!isNaN(value) && value > 0 && value < 100000) {
+            valorRecebido = value;
+            break;
+          }
         }
       }
       
-      // Forma de pagamento - geralmente está nas últimas colunas como texto
-      let formaPagamentoTexto = 'Não informado';
-      for (let i = rowValues.length - 1; i >= 0; i--) {
-        const value = String(rowValues[i] || '');
-        // Procurar por texto que não seja número e não seja vazio
-        if (value && 
-            value !== 'undefined' && 
-            value !== 'null' && 
-            isNaN(Number(value)) && 
-            value.length > 2) {
-          formaPagamentoTexto = value;
-          break;
+      // Forma de pagamento
+      let formaPagamento = 'Não informado';
+      if (formaPagamentoColIndex >= 0) {
+        const formaPagamentoTexto = String(rowValues[formaPagamentoColIndex] || '');
+        formaPagamento = extrairFormaPagamento(formaPagamentoTexto);
+      } else {
+        // Fallback: procurar por texto que pareça forma de pagamento
+        for (let i = rowValues.length - 1; i >= 0; i--) {
+          const value = String(rowValues[i] || '');
+          if (value && 
+              value !== 'undefined' && 
+              value !== 'null' && 
+              isNaN(Number(value)) && 
+              value.length > 2) {
+            formaPagamento = extrairFormaPagamento(value);
+            break;
+          }
         }
       }
       
-      // Extrair apenas a forma de pagamento do texto completo
-      const formaPagamento = extrairFormaPagamento(formaPagamentoTexto);
-      
-      // Para a data, procurar por números que podem ser datas do Excel
+      // Data
       let dataFormatada = new Date().toLocaleDateString('pt-BR');
-      for (let i = 2; i < rowValues.length; i++) {
-        const value = rowValues[i];
-        if (typeof value === 'number' && value > 40000 && value < 50000) {
+      if (dataColIndex >= 0) {
+        const dataValue = rowValues[dataColIndex];
+        if (typeof dataValue === 'number' && dataValue > 40000 && dataValue < 50000) {
           // Converter número serial do Excel para data
-          const excelDate = new Date((value - 25569) * 86400 * 1000);
+          const excelDate = new Date((dataValue - 25569) * 86400 * 1000);
           dataFormatada = excelDate.toLocaleDateString('pt-BR');
-          break;
+        } else if (typeof dataValue === 'string' && dataValue.includes('/')) {
+          dataFormatada = dataValue;
+        }
+      } else {
+        // Fallback: procurar por datas no formato de número do Excel
+        for (let i = 2; i < rowValues.length; i++) {
+          const value = rowValues[i];
+          if (typeof value === 'number' && value > 40000 && value < 50000) {
+            const excelDate = new Date((value - 25569) * 86400 * 1000);
+            dataFormatada = excelDate.toLocaleDateString('pt-BR');
+            break;
+          }
         }
       }
 
@@ -164,7 +205,6 @@ const Index = () => {
       };
       
       console.log(`Item processado ${index + 1}:`, processedItem);
-      console.log(`Texto original: "${formaPagamentoTexto}" -> Forma extraída: "${formaPagamento}"`);
       return processedItem;
     }).filter(item => item.valor > 0); // Filtrar apenas vendas com valor
 
