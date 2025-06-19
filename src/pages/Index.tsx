@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,37 +22,72 @@ const Index = () => {
   const processExcelData = (jsonData) => {
     console.log("Dados brutos do Excel:", jsonData);
     
-    // Filtrar apenas as linhas que têm dados válidos (não são cabeçalho ou total)
+    // Pegar todas as linhas exceto cabeçalho e total
     const dataRows = jsonData.filter((row, index) => {
-      // Pular primeira linha (cabeçalho) e última linha (total)
-      if (index === 0 || index === jsonData.length - 1) return false;
+      // Pular primeira linha (cabeçalho)
+      if (index === 0) return false;
       
-      // Verificar se a linha tem dados válidos
-      const firstColumn = Object.values(row)[0];
-      return firstColumn && typeof firstColumn === 'number' && firstColumn > 0;
+      // Verificar se a linha tem dados válidos (não é linha de total)
+      const rowValues = Object.values(row);
+      const firstColumn = rowValues[0];
+      
+      // Se a primeira coluna é um número válido, é uma linha de dados
+      return firstColumn && 
+             (typeof firstColumn === 'number' || 
+              (typeof firstColumn === 'string' && !isNaN(Number(firstColumn))));
     });
 
     console.log("Linhas de dados filtradas:", dataRows);
+    console.log("Número de linhas encontradas:", dataRows.length);
 
     // Processar cada linha de dados
     const processedData = dataRows.map((row, index) => {
       const rowValues = Object.values(row);
+      console.log(`Linha ${index + 1}:`, rowValues);
       
-      // Mapear baseado na posição das colunas conforme a imagem
+      // Mapear baseado na estrutura da planilha
       const codigo = rowValues[0] ? String(rowValues[0]) : `V${String(index + 1).padStart(3, '0')}`;
       const cliente = rowValues[1] ? String(rowValues[1]) : 'Cliente não informado';
-      const valorRecebido = parseFloat(String(rowValues[5] || 0)) || 0; // Coluna "Valor Recebido"
-      const formaPagamento = rowValues[6] ? String(rowValues[6]) : 'Não informado'; // Coluna "Forma de Pagamento"
       
-      // Para a data, vamos converter o número serial do Excel para data
+      // Valor deve estar em uma das colunas intermediárias - vamos procurar por números que parecem valores
+      let valorRecebido = 0;
+      for (let i = 2; i < rowValues.length; i++) {
+        const value = parseFloat(String(rowValues[i] || 0));
+        // Procurar por valores que fazem sentido (entre 1 e 100000)
+        if (!isNaN(value) && value > 0 && value < 100000) {
+          valorRecebido = value;
+          break;
+        }
+      }
+      
+      // Forma de pagamento - geralmente está nas últimas colunas como texto
+      let formaPagamento = 'Não informado';
+      for (let i = rowValues.length - 1; i >= 0; i--) {
+        const value = String(rowValues[i] || '');
+        // Procurar por texto que não seja número e não seja vazio
+        if (value && 
+            value !== 'undefined' && 
+            value !== 'null' && 
+            isNaN(Number(value)) && 
+            value.length > 2) {
+          formaPagamento = value;
+          break;
+        }
+      }
+      
+      // Para a data, procurar por números que podem ser datas do Excel
       let dataFormatada = new Date().toLocaleDateString('pt-BR');
-      if (rowValues[8] && typeof rowValues[8] === 'number') {
-        // Converter número serial do Excel para data
-        const excelDate = new Date((rowValues[8] - 25569) * 86400 * 1000);
-        dataFormatada = excelDate.toLocaleDateString('pt-BR');
+      for (let i = 2; i < rowValues.length; i++) {
+        const value = rowValues[i];
+        if (typeof value === 'number' && value > 40000 && value < 50000) {
+          // Converter número serial do Excel para data
+          const excelDate = new Date((value - 25569) * 86400 * 1000);
+          dataFormatada = excelDate.toLocaleDateString('pt-BR');
+          break;
+        }
       }
 
-      return {
+      const processedItem = {
         id: index + 1,
         codigo: codigo,
         cliente: cliente,
@@ -61,9 +95,13 @@ const Index = () => {
         data: dataFormatada,
         formaPagamento: formaPagamento
       };
+      
+      console.log(`Item processado ${index + 1}:`, processedItem);
+      return processedItem;
     }).filter(item => item.valor > 0); // Filtrar apenas vendas com valor
 
-    console.log("Dados processados:", processedData);
+    console.log("Dados processados finais:", processedData);
+    console.log("Total de vendas válidas:", processedData.length);
     return processedData;
   };
 
