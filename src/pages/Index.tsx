@@ -9,39 +9,102 @@ import { toast } from "@/hooks/use-toast";
 import SalesChart from "@/components/SalesChart";
 import TrendChart from "@/components/TrendChart";
 import SalesDetailModal from "@/components/SalesDetailModal";
-
-// Dados de exemplo simulando uma planilha processada
-const sampleData = [
-  { id: 1, codigo: "V001", cliente: "João Silva", valor: 1500, data: "2024-06-15", formaPagamento: "Cartão de Crédito" },
-  { id: 2, codigo: "V002", cliente: "Maria Santos", valor: 800, data: "2024-06-15", formaPagamento: "PIX" },
-  { id: 3, codigo: "V003", cliente: "Pedro Costa", valor: 2200, data: "2024-06-16", formaPagamento: "Cartão de Débito" },
-  { id: 4, codigo: "V004", cliente: "Ana Oliveira", valor: 950, data: "2024-06-16", formaPagamento: "Dinheiro" },
-  { id: 5, codigo: "V005", cliente: "Carlos Lima", valor: 1800, data: "2024-06-17", formaPagamento: "Cartão de Crédito" },
-  { id: 6, codigo: "V006", cliente: "Lucia Ferreira", valor: 650, data: "2024-06-17", formaPagamento: "PIX" },
-  { id: 7, codigo: "V007", cliente: "Roberto Silva", valor: 1200, data: "2024-06-18", formaPagamento: "Cartão de Crédito" },
-  { id: 8, codigo: "V008", cliente: "Fernanda Costa", valor: 750, data: "2024-06-18", formaPagamento: "Dinheiro" },
-  { id: 9, codigo: "V009", cliente: "Antonio Santos", valor: 1600, data: "2024-06-19", formaPagamento: "PIX" },
-  { id: 10, codigo: "V010", cliente: "Beatriz Lima", valor: 900, data: "2024-06-19", formaPagamento: "Cartão de Débito" },
-];
+import * as XLSX from 'xlsx';
 
 const Index = () => {
-  const [data, setData] = useState(sampleData);
-  const [filteredData, setFilteredData] = useState(sampleData);
+  const [data, setData] = useState([]);
+  const [filteredData, setFilteredData] = useState([]);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("all");
   const [selectedDate, setSelectedDate] = useState("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPaymentDetails, setSelectedPaymentDetails] = useState([]);
-  const [hasUploadedFile, setHasUploadedFile] = useState(true); // Simula arquivo já carregado
+  const [hasUploadedFile, setHasUploadedFile] = useState(false);
+
+  const processExcelData = (jsonData) => {
+    console.log("Dados brutos do Excel:", jsonData);
+    
+    // Mapear os dados da planilha para o formato esperado
+    const processedData = jsonData.map((row, index) => {
+      // Tentar diferentes nomes de colunas possíveis
+      const codigo = row['Código'] || row['Codigo'] || row['Code'] || `V${String(index + 1).padStart(3, '0')}`;
+      const cliente = row['Cliente'] || row['Client'] || row['Nome'] || 'Cliente não informado';
+      const valorRecebido = parseFloat(row['Valor Recebido'] || row['ValorRecebido'] || row['Valor'] || row['Value'] || 0);
+      const data = row['Data'] || row['Date'] || new Date().toISOString().split('T')[0];
+      const formaPagamento = row['Forma de Pagamento'] || row['FormaPagamento'] || row['Payment'] || 'Não informado';
+
+      return {
+        id: index + 1,
+        codigo,
+        cliente,
+        valor: valorRecebido,
+        data: typeof data === 'string' ? data : new Date(data).toLocaleDateString('pt-BR'),
+        formaPagamento
+      };
+    }).filter(item => item.valor > 0); // Filtrar apenas vendas com valor
+
+    console.log("Dados processados:", processedData);
+    return processedData;
+  };
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (file) {
       if (file.type.includes('sheet') || file.name.endsWith('.xls') || file.name.endsWith('.xlsx')) {
-        setHasUploadedFile(true);
-        toast({
-          title: "Arquivo carregado com sucesso!",
-          description: `${file.name} foi processado e os dados estão prontos para análise.`,
-        });
+        const reader = new FileReader();
+        
+        reader.onload = (e) => {
+          try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            
+            // Pegar a primeira planilha
+            const worksheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[worksheetName];
+            
+            // Converter para JSON
+            const jsonData = XLSX.utils.sheet_to_json(worksheet);
+            
+            if (jsonData.length === 0) {
+              toast({
+                title: "Planilha vazia",
+                description: "A planilha não contém dados válidos.",
+                variant: "destructive",
+              });
+              return;
+            }
+
+            // Processar os dados
+            const processedData = processExcelData(jsonData);
+            
+            if (processedData.length === 0) {
+              toast({
+                title: "Nenhum dado válido encontrado",
+                description: "Verifique se a planilha contém as colunas: Código, Cliente, Valor Recebido, Data, Forma de Pagamento",
+                variant: "destructive",
+              });
+              return;
+            }
+
+            setData(processedData);
+            setFilteredData(processedData);
+            setHasUploadedFile(true);
+            
+            toast({
+              title: "Arquivo carregado com sucesso!",
+              description: `${file.name} foi processado. ${processedData.length} vendas encontradas.`,
+            });
+            
+          } catch (error) {
+            console.error("Erro ao processar arquivo:", error);
+            toast({
+              title: "Erro ao processar arquivo",
+              description: "Verifique se o arquivo Excel está no formato correto.",
+              variant: "destructive",
+            });
+          }
+        };
+        
+        reader.readAsArrayBuffer(file);
       } else {
         toast({
           title: "Formato de arquivo inválido",
@@ -125,7 +188,10 @@ const Index = () => {
                 Carregar Planilha de Vendas
               </h3>
               <p className="text-slate-600 mb-4">
-                Selecione um arquivo Excel (.xls ou .xlsx) para começar a análise
+                Selecione um arquivo Excel (.xls ou .xlsx) com dados de vendas
+              </p>
+              <p className="text-sm text-slate-500 mb-4">
+                A planilha deve conter as colunas: Código, Cliente, Valor Recebido, Data, Forma de Pagamento
               </p>
               <Input
                 type="file"
@@ -138,8 +204,30 @@ const Index = () => {
         )}
 
         {/* Dashboard */}
-        {hasUploadedFile && (
+        {hasUploadedFile && data.length > 0 && (
           <>
+            {/* Arquivo carregado - opção de carregar novo */}
+            <Card className="bg-green-50 border-green-200">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Upload className="h-5 w-5 text-green-600" />
+                    <span className="text-green-800 font-medium">
+                      Planilha carregada: {data.length} vendas encontradas
+                    </span>
+                  </div>
+                  <div>
+                    <Input
+                      type="file"
+                      accept=".xls,.xlsx"
+                      onChange={handleFileUpload}
+                      className="max-w-xs"
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Filtros */}
             <Card>
               <CardHeader>
@@ -230,7 +318,7 @@ const Index = () => {
                     <div>
                       <p className="text-purple-100">Ticket Médio</p>
                       <h3 className="text-3xl font-bold">
-                        R$ {(getTotalSales() / filteredData.length).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        R$ {filteredData.length > 0 ? (getTotalSales() / filteredData.length).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}
                       </h3>
                     </div>
                     <BarChart3 className="h-12 w-12 text-purple-200" />
@@ -255,6 +343,27 @@ const Index = () => {
               data={selectedPaymentDetails}
             />
           </>
+        )}
+
+        {/* Estado quando arquivo foi carregado mas não há dados válidos */}
+        {hasUploadedFile && data.length === 0 && (
+          <Card className="border-2 border-dashed border-yellow-300 bg-yellow-50/50">
+            <CardContent className="p-8 text-center">
+              <Upload className="mx-auto h-12 w-12 text-yellow-500 mb-4" />
+              <h3 className="text-xl font-semibold text-slate-800 mb-2">
+                Nenhum dado válido encontrado
+              </h3>
+              <p className="text-slate-600 mb-4">
+                Verifique se a planilha contém as colunas necessárias e dados válidos
+              </p>
+              <Input
+                type="file"
+                accept=".xls,.xlsx"
+                onChange={handleFileUpload}
+                className="max-w-md mx-auto"
+              />
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>
