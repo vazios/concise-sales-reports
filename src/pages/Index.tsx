@@ -46,30 +46,61 @@ const Index = () => {
         return 'Não informado';
       }
 
-      const texto = textoCompleto.toUpperCase();
+      const texto = textoCompleto.toUpperCase().trim();
+      console.log("Analisando texto:", texto);
       
-      // Mapear formas de pagamento conhecidas
-      const formasPagamento = {
+      // Se contém hífens, pegar a última parte (forma de pagamento real)
+      if (texto.includes(' - ')) {
+        const partes = texto.split(' - ');
+        const ultimaParte = partes[partes.length - 1].trim();
+        console.log("Última parte encontrada:", ultimaParte);
+        
+        // Mapear formas de pagamento conhecidas da última parte
+        const mapeamentoFormas = {
+          'PIX': 'PIX',
+          'VISA': 'Visa',
+          'MASTERCARD': 'Mastercard',
+          'MASTERCARD_MAESTRO': 'Mastercard',
+          'VISA_ELECTRON': 'Visa Electron',
+          'ELO': 'Elo',
+          'CARTEIRA': 'Carteira Digital',
+          'DÉBITO': 'Débito',
+          'CRÉDITO': 'Crédito'
+        };
+        
+        // Verificar se a última parte corresponde a uma forma conhecida
+        for (const [chave, valor] of Object.entries(mapeamentoFormas)) {
+          if (ultimaParte.includes(chave)) {
+            console.log(`Mapeamento encontrado: ${chave} -> ${valor}`);
+            return valor;
+          }
+        }
+        
+        // Se não encontrou mapeamento, retornar a última parte limpa
+        return ultimaParte;
+      }
+      
+      // Para casos sem hífen (como "Delivery - Dinheiro" que vira "Dinheiro")
+      const formasSimples = {
+        'DINHEIRO': 'Dinheiro',
         'PIX': 'PIX',
-        'DINHEIRO': 'Dinheiro', 
         'DÉBITO': 'Débito',
         'CRÉDITO': 'Crédito',
         'VISA': 'Visa',
         'MASTERCARD': 'Mastercard',
-        'MASTER': 'Mastercard',
         'ELO': 'Elo',
-        'CARTEIRA': 'Carteira Digital',
-        'DELIVERY': 'Dinheiro' // Delivery - Dinheiro
+        'CARTEIRA': 'Carteira Digital'
       };
-
-      // Procurar por cada forma de pagamento no texto
-      for (const [chave, valor] of Object.entries(formasPagamento)) {
+      
+      // Procurar por formas de pagamento no texto completo
+      for (const [chave, valor] of Object.entries(formasSimples)) {
         if (texto.includes(chave)) {
+          console.log(`Forma simples encontrada: ${chave} -> ${valor}`);
           return valor;
         }
       }
 
-      // Se não encontrou nenhuma forma conhecida, retornar o texto original limpo
+      console.log("Nenhum mapeamento encontrado, retornando texto original");
       return textoCompleto.trim();
     };
 
