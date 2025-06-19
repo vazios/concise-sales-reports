@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ const Index = () => {
   const [data, setData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("all");
+  const [selectedChannel, setSelectedChannel] = useState("all");
   const [selectedDate, setSelectedDate] = useState("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPaymentDetails, setSelectedPaymentDetails] = useState([]);
@@ -98,14 +100,14 @@ const Index = () => {
       return textoCompleto.trim();
     };
 
-    // Processar cada linha de dados usando o mapeamento fixo das colunas
+    // Processar cada linha de dados usando o mapeamento das colunas
     const processedData = dataRows.map((row, index) => {
       const rowValues = Object.values(row);
       console.log(`Linha ${index + 1}:`, rowValues);
       
       // Mapear colunas conforme especificado:
       // A = código (índice 0), B = cliente (índice 1), G = valor recebido (índice 6), 
-      // H = forma de pagamento (índice 7), J = data (índice 9)
+      // H = forma de pagamento (índice 7), I = canal (índice 8), J = data (índice 9)
       
       const codigo = String(rowValues[0] || `V${String(index + 1).padStart(3, '0')}`);
       const cliente = String(rowValues[1] || 'Cliente não informado');
@@ -124,6 +126,12 @@ const Index = () => {
       if (rowValues[7] !== undefined && rowValues[7] !== null) {
         const formaPagamentoTexto = String(rowValues[7] || '');
         formaPagamento = extrairFormaPagamento(formaPagamentoTexto);
+      }
+      
+      // Canal (coluna I - índice 8)
+      let canal = 'Não informado';
+      if (rowValues[8] !== undefined && rowValues[8] !== null) {
+        canal = String(rowValues[8] || 'Não informado').trim();
       }
       
       // Data (coluna J - índice 9)
@@ -147,7 +155,8 @@ const Index = () => {
         cliente: cliente,
         valor: valorRecebido,
         data: dataFormatada,
-        formaPagamento: formaPagamento
+        formaPagamento: formaPagamento,
+        canal: canal
       };
       
       console.log(`Item processado ${index + 1}:`, processedItem);
@@ -240,6 +249,10 @@ const Index = () => {
       filtered = filtered.filter(item => item.formaPagamento === selectedPaymentMethod);
     }
     
+    if (selectedChannel !== "all") {
+      filtered = filtered.filter(item => item.canal === selectedChannel);
+    }
+    
     if (selectedDate !== "all") {
       filtered = filtered.filter(item => item.data === selectedDate);
     }
@@ -249,6 +262,7 @@ const Index = () => {
 
   const resetFilters = () => {
     setSelectedPaymentMethod("all");
+    setSelectedChannel("all");
     setSelectedDate("all");
     setFilteredData(data);
   };
@@ -286,6 +300,7 @@ const Index = () => {
   };
 
   const paymentMethods = [...new Set(data.map(item => item.formaPagamento))];
+  const channels = [...new Set(data.map(item => item.canal))];
   const dates = [...new Set(data.map(item => item.data))].sort();
 
   return (
@@ -309,7 +324,7 @@ const Index = () => {
                 Selecione um arquivo Excel (.xls ou .xlsx) com dados de vendas
               </p>
               <p className="text-sm text-slate-500 mb-4">
-                A planilha deve conter as colunas: A=Código, B=Cliente, G=Valor Recebido, H=Forma de Pagamento, J=Data
+                A planilha deve conter as colunas: A=Código, B=Cliente, G=Valor Recebido, H=Forma de Pagamento, I=Canal, J=Data
               </p>
               <Input
                 type="file"
@@ -368,6 +383,23 @@ const Index = () => {
                         <SelectItem value="all">Todas as formas</SelectItem>
                         {paymentMethods.map(method => (
                           <SelectItem key={method} value={method}>{method}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="flex-1 min-w-48">
+                    <label className="text-sm font-medium text-slate-700 mb-2 block">
+                      Canal
+                    </label>
+                    <Select value={selectedChannel} onValueChange={setSelectedChannel}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um canal..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os canais</SelectItem>
+                        {channels.map(channel => (
+                          <SelectItem key={channel} value={channel}>{channel}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
