@@ -100,6 +100,50 @@ const Index = () => {
       return textoCompleto.trim();
     };
 
+    // Função melhorada para processar valores numéricos
+    const processarValorNumerico = (valor) => {
+      if (valor === undefined || valor === null || valor === '') {
+        return 0;
+      }
+
+      // Se já é um número válido
+      if (typeof valor === 'number' && !isNaN(valor)) {
+        return valor;
+      }
+
+      // Se é string, tentar converter
+      if (typeof valor === 'string') {
+        // Remover espaços e caracteres não numéricos exceto vírgula, ponto e sinal negativo
+        let valorLimpo = valor.toString().trim().replace(/[^\d,.-]/g, '');
+        
+        console.log("Valor original:", valor, "Valor limpo:", valorLimpo);
+        
+        // Se está vazio após limpeza, retornar 0
+        if (!valorLimpo) {
+          return 0;
+        }
+
+        // Tratar diferentes formatos de número
+        // Formato brasileiro: 1.234,56 ou 1234,56
+        if (valorLimpo.includes(',') && valorLimpo.lastIndexOf(',') > valorLimpo.lastIndexOf('.')) {
+          // Remover pontos (separadores de milhares) e trocar vírgula por ponto
+          valorLimpo = valorLimpo.replace(/\./g, '').replace(',', '.');
+        }
+        // Formato americano: 1,234.56 ou 1234.56
+        else if (valorLimpo.includes(',')) {
+          // Remover vírgulas (separadores de milhares)
+          valorLimpo = valorLimpo.replace(/,/g, '');
+        }
+
+        const numeroConvertido = parseFloat(valorLimpo);
+        console.log("Número convertido:", numeroConvertido);
+        
+        return isNaN(numeroConvertido) ? 0 : numeroConvertido;
+      }
+
+      return 0;
+    };
+
     // Processar cada linha de dados usando o mapeamento das colunas
     const processedData = dataRows.map((row, index) => {
       const rowValues = Object.values(row);
@@ -112,14 +156,9 @@ const Index = () => {
       const codigo = String(rowValues[0] || `V${String(index + 1).padStart(3, '0')}`);
       const cliente = String(rowValues[1] || 'Cliente não informado');
       
-      // Valor recebido (coluna G - índice 6)
-      let valorRecebido = 0;
-      if (rowValues[6] !== undefined && rowValues[6] !== null) {
-        valorRecebido = parseFloat(String(rowValues[6] || 0));
-        if (isNaN(valorRecebido)) {
-          valorRecebido = 0;
-        }
-      }
+      // Valor recebido (coluna G - índice 6) - usando função melhorada
+      const valorRecebido = processarValorNumerico(rowValues[6]);
+      console.log(`Valor processado para linha ${index + 1}:`, valorRecebido);
       
       // Forma de pagamento (coluna H - índice 7)
       let formaPagamento = 'Não informado';
