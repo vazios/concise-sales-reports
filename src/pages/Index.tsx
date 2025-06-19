@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -54,7 +53,12 @@ const Index = () => {
         
         reader.onload = (e) => {
           try {
-            const data = new Uint8Array(e.target.result);
+            const result = e.target?.result;
+            if (!result) {
+              throw new Error("Falha ao ler o arquivo");
+            }
+            
+            const data = new Uint8Array(result as ArrayBuffer);
             const workbook = XLSX.read(data, { type: 'array' });
             
             // Pegar a primeira planilha
