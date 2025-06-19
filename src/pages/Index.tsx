@@ -40,6 +40,39 @@ const Index = () => {
     console.log("Linhas de dados filtradas:", dataRows);
     console.log("Número de linhas encontradas:", dataRows.length);
 
+    // Função para extrair a forma de pagamento da string completa
+    const extrairFormaPagamento = (textoCompleto) => {
+      if (!textoCompleto || typeof textoCompleto !== 'string') {
+        return 'Não informado';
+      }
+
+      const texto = textoCompleto.toUpperCase();
+      
+      // Mapear formas de pagamento conhecidas
+      const formasPagamento = {
+        'PIX': 'PIX',
+        'DINHEIRO': 'Dinheiro', 
+        'DÉBITO': 'Débito',
+        'CRÉDITO': 'Crédito',
+        'VISA': 'Visa',
+        'MASTERCARD': 'Mastercard',
+        'MASTER': 'Mastercard',
+        'ELO': 'Elo',
+        'CARTEIRA': 'Carteira Digital',
+        'DELIVERY': 'Dinheiro' // Delivery - Dinheiro
+      };
+
+      // Procurar por cada forma de pagamento no texto
+      for (const [chave, valor] of Object.entries(formasPagamento)) {
+        if (texto.includes(chave)) {
+          return valor;
+        }
+      }
+
+      // Se não encontrou nenhuma forma conhecida, retornar o texto original limpo
+      return textoCompleto.trim();
+    };
+
     // Processar cada linha de dados
     const processedData = dataRows.map((row, index) => {
       const rowValues = Object.values(row);
@@ -61,7 +94,7 @@ const Index = () => {
       }
       
       // Forma de pagamento - geralmente está nas últimas colunas como texto
-      let formaPagamento = 'Não informado';
+      let formaPagamentoTexto = 'Não informado';
       for (let i = rowValues.length - 1; i >= 0; i--) {
         const value = String(rowValues[i] || '');
         // Procurar por texto que não seja número e não seja vazio
@@ -70,10 +103,13 @@ const Index = () => {
             value !== 'null' && 
             isNaN(Number(value)) && 
             value.length > 2) {
-          formaPagamento = value;
+          formaPagamentoTexto = value;
           break;
         }
       }
+      
+      // Extrair apenas a forma de pagamento do texto completo
+      const formaPagamento = extrairFormaPagamento(formaPagamentoTexto);
       
       // Para a data, procurar por números que podem ser datas do Excel
       let dataFormatada = new Date().toLocaleDateString('pt-BR');
@@ -97,6 +133,7 @@ const Index = () => {
       };
       
       console.log(`Item processado ${index + 1}:`, processedItem);
+      console.log(`Texto original: "${formaPagamentoTexto}" -> Forma extraída: "${formaPagamento}"`);
       return processedItem;
     }).filter(item => item.valor > 0); // Filtrar apenas vendas com valor
 
