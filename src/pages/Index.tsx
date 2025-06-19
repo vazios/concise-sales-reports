@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -100,14 +99,22 @@ const Index = () => {
       return textoCompleto.trim();
     };
 
-    // Função melhorada para processar valores numéricos
+    // Função melhorada para processar valores numéricos com foco em .xls vs .xlsx
     const processarValorNumerico = (valor) => {
+      console.log("Processando valor:", valor, "Tipo:", typeof valor);
+      
       if (valor === undefined || valor === null || valor === '') {
         return 0;
       }
 
       // Se já é um número válido
       if (typeof valor === 'number' && !isNaN(valor)) {
+        // Verificar se o número parece estar em centavos (muito comum em .xls)
+        // Se o valor for muito alto (acima de 100000), pode estar em centavos
+        if (valor > 100000) {
+          console.log("Valor possivelmente em centavos:", valor, "Convertendo para reais:", valor / 100);
+          return valor / 100;
+        }
         return valor;
       }
 
@@ -138,7 +145,17 @@ const Index = () => {
         const numeroConvertido = parseFloat(valorLimpo);
         console.log("Número convertido:", numeroConvertido);
         
-        return isNaN(numeroConvertido) ? 0 : numeroConvertido;
+        if (isNaN(numeroConvertido)) {
+          return 0;
+        }
+
+        // Verificar se o número parece estar em centavos
+        if (numeroConvertido > 100000) {
+          console.log("String convertida possivelmente em centavos:", numeroConvertido, "Convertendo para reais:", numeroConvertido / 100);
+          return numeroConvertido / 100;
+        }
+
+        return numeroConvertido;
       }
 
       return 0;
