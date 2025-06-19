@@ -28,7 +28,7 @@ const Index = () => {
   const [data, setData] = useState(sampleData);
   const [filteredData, setFilteredData] = useState(sampleData);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("all");
-  const [selectedDate, setSelectedDate] = useState("");
+  const [selectedDate, setSelectedDate] = useState("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPaymentDetails, setSelectedPaymentDetails] = useState([]);
   const [hasUploadedFile, setHasUploadedFile] = useState(true); // Simula arquivo já carregado
@@ -59,7 +59,7 @@ const Index = () => {
       filtered = filtered.filter(item => item.formaPagamento === selectedPaymentMethod);
     }
     
-    if (selectedDate) {
+    if (selectedDate !== "all") {
       filtered = filtered.filter(item => item.data === selectedDate);
     }
     
@@ -68,7 +68,7 @@ const Index = () => {
 
   const resetFilters = () => {
     setSelectedPaymentMethod("all");
-    setSelectedDate("");
+    setSelectedDate("all");
     setFilteredData(data);
   };
 
@@ -176,7 +176,7 @@ const Index = () => {
                         <SelectValue placeholder="Selecione uma data..." />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Todas as datas</SelectItem>
+                        <SelectItem value="all">Todas as datas</SelectItem>
                         {dates.map(date => (
                           <SelectItem key={date} value={date}>{date}</SelectItem>
                         ))}
