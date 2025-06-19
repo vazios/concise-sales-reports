@@ -22,22 +22,43 @@ const Index = () => {
   const processExcelData = (jsonData) => {
     console.log("Dados brutos do Excel:", jsonData);
     
-    // Mapear os dados da planilha para o formato esperado
-    const processedData = jsonData.map((row, index) => {
-      // Tentar diferentes nomes de colunas possíveis
-      const codigo = row['Código'] || row['Codigo'] || row['Code'] || `V${String(index + 1).padStart(3, '0')}`;
-      const cliente = row['Cliente'] || row['Client'] || row['Nome'] || 'Cliente não informado';
-      const valorRecebido = parseFloat(row['Valor Recebido'] || row['ValorRecebido'] || row['Valor'] || row['Value'] || 0);
-      const data = row['Data'] || row['Date'] || new Date().toISOString().split('T')[0];
-      const formaPagamento = row['Forma de Pagamento'] || row['FormaPagamento'] || row['Payment'] || 'Não informado';
+    // Filtrar apenas as linhas que têm dados válidos (não são cabeçalho ou total)
+    const dataRows = jsonData.filter((row, index) => {
+      // Pular primeira linha (cabeçalho) e última linha (total)
+      if (index === 0 || index === jsonData.length - 1) return false;
+      
+      // Verificar se a linha tem dados válidos
+      const firstColumn = Object.values(row)[0];
+      return firstColumn && typeof firstColumn === 'number' && firstColumn > 0;
+    });
+
+    console.log("Linhas de dados filtradas:", dataRows);
+
+    // Processar cada linha de dados
+    const processedData = dataRows.map((row, index) => {
+      const rowValues = Object.values(row);
+      
+      // Mapear baseado na posição das colunas conforme a imagem
+      const codigo = rowValues[0] || `V${String(index + 1).padStart(3, '0')}`;
+      const cliente = rowValues[1] || 'Cliente não informado';
+      const valorRecebido = parseFloat(rowValues[5]) || 0; // Coluna "Valor Recebido"
+      const formaPagamento = rowValues[6] || 'Não informado'; // Coluna "Forma de Pagamento"
+      
+      // Para a data, vamos converter o número serial do Excel para data
+      let dataFormatada = new Date().toLocaleDateString('pt-BR');
+      if (rowValues[8] && typeof rowValues[8] === 'number') {
+        // Converter número serial do Excel para data
+        const excelDate = new Date((rowValues[8] - 25569) * 86400 * 1000);
+        dataFormatada = excelDate.toLocaleDateString('pt-BR');
+      }
 
       return {
         id: index + 1,
-        codigo,
-        cliente,
+        codigo: codigo.toString(),
+        cliente: cliente.toString(),
         valor: valorRecebido,
-        data: typeof data === 'string' ? data : new Date(data).toLocaleDateString('pt-BR'),
-        formaPagamento
+        data: dataFormatada,
+        formaPagamento: formaPagamento.toString()
       };
     }).filter(item => item.valor > 0); // Filtrar apenas vendas com valor
 
@@ -83,7 +104,7 @@ const Index = () => {
             if (processedData.length === 0) {
               toast({
                 title: "Nenhum dado válido encontrado",
-                description: "Verifique se a planilha contém as colunas: Código, Cliente, Valor Recebido, Data, Forma de Pagamento",
+                description: "Verifique se a planilha contém dados de vendas válidos.",
                 variant: "destructive",
               });
               return;
