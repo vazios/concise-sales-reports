@@ -36,10 +36,11 @@ const DragDropUpload: React.FC<DragDropUploadProps> = ({
     if (files.length > 0) {
       const file = files[0];
       if (file.type.includes('sheet') || file.name.endsWith('.xls') || file.name.endsWith('.xlsx')) {
-        // Simular evento de input para compatibilidade
+        // Create a proper fake event for compatibility
         const fakeEvent = {
-          target: { files: [file] }
-        } as React.ChangeEvent<HTMLInputElement>;
+          target: { files: [file] },
+          currentTarget: { files: [file] }
+        } as unknown as React.ChangeEvent<HTMLInputElement>;
         onFileUpload(fakeEvent);
       }
     }

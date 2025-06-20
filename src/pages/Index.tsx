@@ -1,6 +1,8 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, TrendingUp, BarChart3 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { DollarSign, TrendingUp, BarChart3, Upload } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import SalesChart from "@/components/SalesChart";
 import TrendChart from "@/components/TrendChart";
