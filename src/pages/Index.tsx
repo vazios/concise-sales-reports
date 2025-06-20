@@ -9,6 +9,11 @@ import SalesChart from "@/components/SalesChart";
 import TrendChart from "@/components/TrendChart";
 import SalesDetailModal from "@/components/SalesDetailModal";
 import * as XLSX from 'xlsx';
+import PieChartComponent from "@/components/PieChart";
+import SeasonalityChart from "@/components/SeasonalityChart";
+import CustomerRanking from "@/components/CustomerRanking";
+import MonthlyComparison from "@/components/MonthlyComparison";
+import GoalsIndicator from "@/components/GoalsIndicator";
 
 const Index = () => {
   const [data, setData] = useState([]);
@@ -533,13 +538,30 @@ const Index = () => {
               </Card>
             </div>
 
-            {/* Gráficos */}
+            {/* Metas vs Realizado */}
+            <GoalsIndicator data={filteredData} />
+
+            {/* Gráficos Principais */}
             <div className="grid lg:grid-cols-2 gap-6">
               <SalesChart 
                 data={getPaymentMethodSummary()} 
                 onBarClick={handleChartClick}
               />
+              <PieChartComponent 
+                data={getPaymentMethodSummary()}
+              />
+            </div>
+
+            {/* Análises Avançadas */}
+            <div className="grid lg:grid-cols-2 gap-6">
               <TrendChart data={getDailySales()} />
+              <SeasonalityChart data={filteredData} />
+            </div>
+
+            {/* Comparativo e Ranking */}
+            <div className="grid lg:grid-cols-2 gap-6">
+              <MonthlyComparison data={filteredData} />
+              <CustomerRanking data={filteredData} />
             </div>
 
             {/* Modal de Detalhes */}
