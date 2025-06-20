@@ -3,15 +3,31 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar } from "lucide-react";
 
-const SeasonalityChart = ({ data }) => {
-  const formatCurrency = (value) => {
+interface WeekdayData {
+  day: string;
+  total: number;
+  average: number;
+  count: number;
+}
+
+interface SalesData {
+  valor: number;
+  data: string;
+}
+
+interface SeasonalityChartProps {
+  data: SalesData[];
+}
+
+const SeasonalityChart = ({ data }: SeasonalityChartProps) => {
+  const formatCurrency = (value: number) => {
     return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
   };
 
   // Processar dados para análise por dia da semana
-  const getWeekdayAnalysis = () => {
+  const getWeekdayAnalysis = (): WeekdayData[] => {
     const weekdays = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-    const weekdayData = {};
+    const weekdayData: Record<string, { total: number; count: number }> = {};
     
     weekdays.forEach(day => {
       weekdayData[day] = { total: 0, count: 0 };
@@ -69,7 +85,7 @@ const SeasonalityChart = ({ data }) => {
             />
             <Tooltip 
               formatter={(value, name) => [
-                formatCurrency(value), 
+                formatCurrency(value as number), 
                 name === 'total' ? 'Total' : 'Média por dia'
               ]}
               labelStyle={{ color: '#334155' }}

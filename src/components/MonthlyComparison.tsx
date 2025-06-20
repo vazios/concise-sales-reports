@@ -1,16 +1,36 @@
 
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, Calendar } from "lucide-react";
+import { Calendar } from "lucide-react";
 
-const MonthlyComparison = ({ data }) => {
-  const formatCurrency = (value) => {
+interface MonthlyData {
+  mes: string;
+  total: number;
+  transacoes: number;
+  ticketMedio: number;
+}
+
+interface MonthlyDataWithGrowth extends MonthlyData {
+  crescimento: number;
+}
+
+interface SalesData {
+  valor: number;
+  data: string;
+}
+
+interface MonthlyComparisonProps {
+  data: SalesData[];
+}
+
+const MonthlyComparison = ({ data }: MonthlyComparisonProps) => {
+  const formatCurrency = (value: number) => {
     return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
   };
 
   // Processar dados para comparação mensal
-  const getMonthlyData = () => {
-    const monthlyData = {};
+  const getMonthlyData = (): MonthlyData[] => {
+    const monthlyData: Record<string, MonthlyData> = {};
     
     data.forEach(item => {
       if (item.data && typeof item.data === 'string') {
@@ -44,14 +64,14 @@ const MonthlyComparison = ({ data }) => {
         const [monthB, yearB] = b.mes.split('/');
         const dateA = new Date(parseInt(yearA), parseInt(monthA) - 1);
         const dateB = new Date(parseInt(yearB), parseInt(monthB) - 1);
-        return dateA - dateB;
+        return dateA.getTime() - dateB.getTime();
       });
   };
 
   const monthlyData = getMonthlyData();
 
   // Calcular crescimento mensal
-  const dataWithGrowth = monthlyData.map((month, index) => {
+  const dataWithGrowth: MonthlyDataWithGrowth[] = monthlyData.map((month, index) => {
     let crescimento = 0;
     if (index > 0) {
       const anterior = monthlyData[index - 1].total;
@@ -94,7 +114,7 @@ const MonthlyComparison = ({ data }) => {
                   tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`}
                 />
                 <Tooltip 
-                  formatter={(value) => [formatCurrency(value), 'Total']}
+                  formatter={(value) => [formatCurrency(value as number), 'Total']}
                   labelStyle={{ color: '#334155' }}
                   contentStyle={{ 
                     backgroundColor: '#f8fafc', 

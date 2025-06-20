@@ -2,14 +2,36 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Crown, User, TrendingUp } from "lucide-react";
 
-const CustomerRanking = ({ data }) => {
-  const formatCurrency = (value) => {
+interface CustomerData {
+  nome: string;
+  total: number;
+  transacoes: number;
+  ultimaCompra: string;
+}
+
+interface CustomerRanking extends CustomerData {
+  ranking: number;
+  ticketMedio: number;
+}
+
+interface SalesData {
+  cliente: string;
+  valor: number;
+  data: string;
+}
+
+interface CustomerRankingProps {
+  data: SalesData[];
+}
+
+const CustomerRanking = ({ data }: CustomerRankingProps) => {
+  const formatCurrency = (value: number) => {
     return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
   };
 
   // Processar dados para ranking de clientes
-  const getCustomerRanking = () => {
-    const customerData = {};
+  const getCustomerRanking = (): CustomerRanking[] => {
+    const customerData: Record<string, CustomerData> = {};
     
     data.forEach(item => {
       if (item.cliente && item.cliente !== 'Não identificado') {
@@ -45,7 +67,7 @@ const CustomerRanking = ({ data }) => {
 
   const topCustomers = getCustomerRanking();
 
-  const getRankingIcon = (position) => {
+  const getRankingIcon = (position: number) => {
     switch (position) {
       case 1:
         return <Crown className="h-5 w-5 text-yellow-500" />;
