@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Calendar, Filter, X, CalendarRange } from "lucide-react";
+import { Calendar, Filter, X } from "lucide-react";
 
 interface AdvancedFiltersProps {
   paymentMethods: string[];
@@ -37,23 +37,12 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
   onApplyFilters,
   onResetFilters
 }) => {
-  const hasActiveFilters = 
-    selectedPaymentMethod !== "all" || 
-    selectedChannel !== "all" || 
-    selectedDate !== "all" ||
-    (dateRange.start && dateRange.end);
-
   return (
     <Card className="shadow-sm">
       <CardHeader className="pb-4">
         <CardTitle className="flex items-center gap-2 text-lg">
           <Filter className="h-5 w-5 text-blue-600" />
           Filtros de Análise
-          {hasActiveFilters && (
-            <span className="ml-2 px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded-full">
-              Ativos
-            </span>
-          )}
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -96,26 +85,18 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
             
             <div>
               <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
-                Filtro de Data
+                Data
               </label>
               <Select value={selectedDate} onValueChange={onDateChange}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione..." />
+                  <SelectValue placeholder="Selecione uma data..." />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas as datas</SelectItem>
-                  <SelectItem value="custom">
-                    <div className="flex items-center gap-2">
-                      <CalendarRange className="h-4 w-4" />
-                      Período personalizado
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="today">Hoje</SelectItem>
-                  <SelectItem value="yesterday">Ontem</SelectItem>
-                  <SelectItem value="last7days">Últimos 7 dias</SelectItem>
-                  <SelectItem value="last30days">Últimos 30 dias</SelectItem>
-                  <SelectItem value="thisMonth">Este mês</SelectItem>
-                  <SelectItem value="lastMonth">Mês passado</SelectItem>
+                  <SelectItem value="custom">Período personalizado</SelectItem>
+                  {dates.map(date => (
+                    <SelectItem key={date} value={date}>{date}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -123,40 +104,31 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
 
           {/* Filtro de período personalizado */}
           {selectedDate === 'custom' && (
-            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
-                    <Calendar className="h-4 w-4 inline mr-1" />
-                    Data Inicial
-                  </label>
-                  <Input
-                    type="date"
-                    value={dateRange.start}
-                    onChange={(e) => onDateRangeChange({ ...dateRange, start: e.target.value })}
-                    className="w-full"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
-                    <Calendar className="h-4 w-4 inline mr-1" />
-                    Data Final
-                  </label>
-                  <Input
-                    type="date"
-                    value={dateRange.end}
-                    onChange={(e) => onDateRangeChange({ ...dateRange, end: e.target.value })}
-                    className="w-full"
-                  />
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+              <div>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                  <Calendar className="h-4 w-4 inline mr-1" />
+                  Data Inicial
+                </label>
+                <Input
+                  type="date"
+                  value={dateRange.start}
+                  onChange={(e) => onDateRangeChange({ ...dateRange, start: e.target.value })}
+                  className="w-full"
+                />
               </div>
-              {dateRange.start && dateRange.end && (
-                <div className="mt-3 p-2 bg-white dark:bg-slate-800 rounded border text-sm">
-                  <span className="text-blue-600 dark:text-blue-400 font-medium">
-                    Período selecionado: {dateRange.start} até {dateRange.end}
-                  </span>
-                </div>
-              )}
+              <div>
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                  <Calendar className="h-4 w-4 inline mr-1" />
+                  Data Final
+                </label>
+                <Input
+                  type="date"
+                  value={dateRange.end}
+                  onChange={(e) => onDateRangeChange({ ...dateRange, end: e.target.value })}
+                  className="w-full"
+                />
+              </div>
             </div>
           )}
           
@@ -173,10 +145,9 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
               onClick={onResetFilters} 
               variant="outline"
               className="flex-1 sm:flex-none"
-              disabled={!hasActiveFilters}
             >
               <X className="h-4 w-4 mr-2" />
-              Limpar {hasActiveFilters ? '(Ativos)' : ''}
+              Limpar
             </Button>
           </div>
         </div>

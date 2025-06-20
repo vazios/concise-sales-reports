@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,7 +15,6 @@ import MonthlyComparison from "@/components/MonthlyComparison";
 import DragDropUpload from "@/components/DragDropUpload";
 import AdvancedFilters from "@/components/AdvancedFilters";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import ExportReports from "@/components/ExportReports";
 
 const Index = () => {
   const [data, setData] = useState([]);
@@ -316,7 +316,6 @@ const Index = () => {
       filtered = filtered.filter(item => item.canal === selectedChannel);
     }
     
-    // Melhorar filtro de data para suportar diferentes períodos
     if (selectedDate === "custom" && dateRange.start && dateRange.end) {
       filtered = filtered.filter(item => {
         const itemDate = new Date(item.data.split('/').reverse().join('-'));
@@ -325,58 +324,7 @@ const Index = () => {
         return itemDate >= startDate && itemDate <= endDate;
       });
     } else if (selectedDate !== "all" && selectedDate !== "custom") {
-      const today = new Date();
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-      
-      switch (selectedDate) {
-        case "today":
-          filtered = filtered.filter(item => {
-            const itemDate = new Date(item.data.split('/').reverse().join('-'));
-            return itemDate.toDateString() === today.toDateString();
-          });
-          break;
-        case "yesterday":
-          filtered = filtered.filter(item => {
-            const itemDate = new Date(item.data.split('/').reverse().join('-'));
-            return itemDate.toDateString() === yesterday.toDateString();
-          });
-          break;
-        case "last7days":
-          const last7Days = new Date(today);
-          last7Days.setDate(last7Days.getDate() - 7);
-          filtered = filtered.filter(item => {
-            const itemDate = new Date(item.data.split('/').reverse().join('-'));
-            return itemDate >= last7Days && itemDate <= today;
-          });
-          break;
-        case "last30days":
-          const last30Days = new Date(today);
-          last30Days.setDate(last30Days.getDate() - 30);
-          filtered = filtered.filter(item => {
-            const itemDate = new Date(item.data.split('/').reverse().join('-'));
-            return itemDate >= last30Days && itemDate <= today;
-          });
-          break;
-        case "thisMonth":
-          const thisMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-          filtered = filtered.filter(item => {
-            const itemDate = new Date(item.data.split('/').reverse().join('-'));
-            return itemDate >= thisMonthStart && itemDate <= today;
-          });
-          break;
-        case "lastMonth":
-          const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-          const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
-          filtered = filtered.filter(item => {
-            const itemDate = new Date(item.data.split('/').reverse().join('-'));
-            return itemDate >= lastMonthStart && itemDate <= lastMonthEnd;
-          });
-          break;
-        default:
-          // Filtro por data específica (mantém comportamento anterior)
-          filtered = filtered.filter(item => item.data === selectedDate);
-      }
+      filtered = filtered.filter(item => item.data === selectedDate);
     }
     
     setFilteredData(filtered);
@@ -467,19 +415,6 @@ const Index = () => {
               onDateRangeChange={setDateRange}
               onApplyFilters={applyFilters}
               onResetFilters={resetFilters}
-            />
-
-            {/* Exportação de Relatórios */}
-            <ExportReports
-              data={data}
-              filteredData={filteredData}
-              paymentMethodSummary={getPaymentMethodSummary()}
-              totalSales={getTotalSales()}
-              filters={{
-                paymentMethod: selectedPaymentMethod,
-                channel: selectedChannel,
-                dateRange: dateRange
-              }}
             />
 
             {/* Resumo Geral */}
