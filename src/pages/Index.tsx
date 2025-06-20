@@ -1,9 +1,6 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, BarChart3, TrendingUp, DollarSign } from "lucide-react";
+import { DollarSign, TrendingUp, BarChart3 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import SalesChart from "@/components/SalesChart";
 import TrendChart from "@/components/TrendChart";
@@ -13,6 +10,9 @@ import PieChartComponent from "@/components/PieChart";
 import SeasonalityChart from "@/components/SeasonalityChart";
 import CustomerRanking from "@/components/CustomerRanking";
 import MonthlyComparison from "@/components/MonthlyComparison";
+import DragDropUpload from "@/components/DragDropUpload";
+import AdvancedFilters from "@/components/AdvancedFilters";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const Index = () => {
   const [data, setData] = useState([]);
@@ -20,6 +20,7 @@ const Index = () => {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("all");
   const [selectedChannel, setSelectedChannel] = useState("all");
   const [selectedDate, setSelectedDate] = useState("all");
+  const [dateRange, setDateRange] = useState({ start: "", end: "" });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPaymentDetails, setSelectedPaymentDetails] = useState([]);
   const [hasUploadedFile, setHasUploadedFile] = useState(false);
@@ -313,7 +314,14 @@ const Index = () => {
       filtered = filtered.filter(item => item.canal === selectedChannel);
     }
     
-    if (selectedDate !== "all") {
+    if (selectedDate === "custom" && dateRange.start && dateRange.end) {
+      filtered = filtered.filter(item => {
+        const itemDate = new Date(item.data.split('/').reverse().join('-'));
+        const startDate = new Date(dateRange.start);
+        const endDate = new Date(dateRange.end);
+        return itemDate >= startDate && itemDate <= endDate;
+      });
+    } else if (selectedDate !== "all" && selectedDate !== "custom") {
       filtered = filtered.filter(item => item.data === selectedDate);
     }
     
@@ -324,6 +332,7 @@ const Index = () => {
     setSelectedPaymentMethod("all");
     setSelectedChannel("all");
     setSelectedDate("all");
+    setDateRange({ start: "", end: "" });
     setFilteredData(data);
   };
 
@@ -364,181 +373,93 @@ const Index = () => {
   const dates = [...new Set(data.map(item => item.data))].sort();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 p-4 sm:p-6 transition-colors">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="text-center space-y-2">
-          <h1 className="text-4xl font-bold text-slate-800">Dashboard de Vendas</h1>
-          <p className="text-slate-600">Sistema de Análise e Conferência de Vendas</p>
+        <div className="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0">
+          <div className="text-center sm:text-left">
+            <h1 className="text-3xl sm:text-4xl font-bold text-slate-800 dark:text-slate-200">
+              Dashboard de Vendas
+            </h1>
+            <p className="text-slate-600 dark:text-slate-400">
+              Sistema de Análise e Conferência de Vendas
+            </p>
+          </div>
+          <ThemeToggle />
         </div>
 
         {/* Upload Section */}
-        {!hasUploadedFile && (
-          <Card className="border-2 border-dashed border-blue-300 bg-blue-50/50">
-            <CardContent className="p-8 text-center">
-              <Upload className="mx-auto h-12 w-12 text-blue-500 mb-4" />
-              <h3 className="text-xl font-semibold text-slate-800 mb-2">
-                Carregar Planilha de Vendas
-              </h3>
-              <p className="text-slate-600 mb-4">
-                Selecione um arquivo Excel (.xls ou .xlsx) com dados de vendas
-              </p>
-              <p className="text-sm text-slate-500 mb-4">
-                A planilha deve conter as colunas: A=Código, B=Cliente, G=Valor Recebido, H=Forma de Pagamento, I=Canal, J=Data
-              </p>
-              <Input
-                type="file"
-                accept=".xls,.xlsx"
-                onChange={handleFileUpload}
-                className="max-w-md mx-auto"
-              />
-            </CardContent>
-          </Card>
-        )}
+        <DragDropUpload 
+          onFileUpload={handleFileUpload}
+          hasUploadedFile={hasUploadedFile}
+          dataLength={data.length}
+        />
 
         {/* Dashboard */}
         {hasUploadedFile && data.length > 0 && (
           <>
-            {/* Arquivo carregado - opção de carregar novo */}
-            <Card className="bg-green-50 border-green-200">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Upload className="h-5 w-5 text-green-600" />
-                    <span className="text-green-800 font-medium">
-                      Planilha carregada: {data.length} vendas encontradas
-                    </span>
-                  </div>
-                  <div>
-                    <Input
-                      type="file"
-                      accept=".xls,.xlsx"
-                      onChange={handleFileUpload}
-                      className="max-w-xs"
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
             {/* Filtros */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5" />
-                  Filtros de Análise
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-4 items-end">
-                  <div className="flex-1 min-w-48">
-                    <label className="text-sm font-medium text-slate-700 mb-2 block">
-                      Forma de Pagamento
-                    </label>
-                    <Select value={selectedPaymentMethod} onValueChange={setSelectedPaymentMethod}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todas as formas</SelectItem>
-                        {paymentMethods.map(method => (
-                          <SelectItem key={method} value={method}>{method}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="flex-1 min-w-48">
-                    <label className="text-sm font-medium text-slate-700 mb-2 block">
-                      Canal
-                    </label>
-                    <Select value={selectedChannel} onValueChange={setSelectedChannel}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione um canal..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos os canais</SelectItem>
-                        {channels.map(channel => (
-                          <SelectItem key={channel} value={channel}>{channel}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="flex-1 min-w-48">
-                    <label className="text-sm font-medium text-slate-700 mb-2 block">
-                      Data
-                    </label>
-                    <Select value={selectedDate} onValueChange={setSelectedDate}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione uma data..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todas as datas</SelectItem>
-                        {dates.map(date => (
-                          <SelectItem key={date} value={date}>{date}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <Button onClick={applyFilters} className="bg-blue-600 hover:bg-blue-700">
-                      Aplicar Filtros
-                    </Button>
-                    <Button onClick={resetFilters} variant="outline">
-                      Limpar
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <AdvancedFilters
+              paymentMethods={paymentMethods}
+              channels={channels}
+              dates={dates}
+              selectedPaymentMethod={selectedPaymentMethod}
+              selectedChannel={selectedChannel}
+              selectedDate={selectedDate}
+              dateRange={dateRange}
+              onPaymentMethodChange={setSelectedPaymentMethod}
+              onChannelChange={setSelectedChannel}
+              onDateChange={setSelectedDate}
+              onDateRangeChange={setDateRange}
+              onApplyFilters={applyFilters}
+              onResetFilters={resetFilters}
+            />
 
             {/* Resumo Geral */}
-            <div className="grid md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
               <Card className="bg-gradient-to-r from-blue-600 to-blue-700 text-white">
-                <CardContent className="p-6">
+                <CardContent className="p-4 sm:p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-blue-100">Total de Vendas</p>
-                      <h3 className="text-3xl font-bold">
+                      <p className="text-blue-100 text-sm">Total de Vendas</p>
+                      <h3 className="text-2xl sm:text-3xl font-bold">
                         R$ {getTotalSales().toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </h3>
                     </div>
-                    <DollarSign className="h-12 w-12 text-blue-200" />
+                    <DollarSign className="h-8 w-8 sm:h-12 sm:w-12 text-blue-200" />
                   </div>
                 </CardContent>
               </Card>
 
               <Card className="bg-gradient-to-r from-green-600 to-green-700 text-white">
-                <CardContent className="p-6">
+                <CardContent className="p-4 sm:p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-green-100">Número de Vendas</p>
-                      <h3 className="text-3xl font-bold">{filteredData.length}</h3>
+                      <p className="text-green-100 text-sm">Número de Vendas</p>
+                      <h3 className="text-2xl sm:text-3xl font-bold">{filteredData.length}</h3>
                     </div>
-                    <TrendingUp className="h-12 w-12 text-green-200" />
+                    <TrendingUp className="h-8 w-8 sm:h-12 sm:w-12 text-green-200" />
                   </div>
                 </CardContent>
               </Card>
 
               <Card className="bg-gradient-to-r from-purple-600 to-purple-700 text-white">
-                <CardContent className="p-6">
+                <CardContent className="p-4 sm:p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-purple-100">Ticket Médio</p>
-                      <h3 className="text-3xl font-bold">
+                      <p className="text-purple-100 text-sm">Ticket Médio</p>
+                      <h3 className="text-2xl sm:text-3xl font-bold">
                         R$ {filteredData.length > 0 ? (getTotalSales() / filteredData.length).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}
                       </h3>
                     </div>
-                    <BarChart3 className="h-12 w-12 text-purple-200" />
+                    <BarChart3 className="h-8 w-8 sm:h-12 sm:w-12 text-purple-200" />
                   </div>
                 </CardContent>
               </Card>
             </div>
 
             {/* Gráficos Principais */}
-            <div className="grid lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               <SalesChart 
                 data={getPaymentMethodSummary()} 
                 onBarClick={handleChartClick}
@@ -549,13 +470,13 @@ const Index = () => {
             </div>
 
             {/* Análises Avançadas */}
-            <div className="grid lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               <TrendChart data={getDailySales()} />
               <SeasonalityChart data={filteredData} />
             </div>
 
             {/* Comparativo e Ranking */}
-            <div className="grid lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               <MonthlyComparison data={filteredData} />
               <CustomerRanking data={filteredData} />
             </div>
@@ -571,13 +492,13 @@ const Index = () => {
 
         {/* Estado quando arquivo foi carregado mas não há dados válidos */}
         {hasUploadedFile && data.length === 0 && (
-          <Card className="border-2 border-dashed border-yellow-300 bg-yellow-50/50">
+          <Card className="border-2 border-dashed border-yellow-300 dark:border-yellow-700 bg-yellow-50/50 dark:bg-yellow-900/20">
             <CardContent className="p-8 text-center">
               <Upload className="mx-auto h-12 w-12 text-yellow-500 mb-4" />
-              <h3 className="text-xl font-semibold text-slate-800 mb-2">
+              <h3 className="text-xl font-semibold text-slate-800 dark:text-slate-200 mb-2">
                 Nenhum dado válido encontrado
               </h3>
-              <p className="text-slate-600 mb-4">
+              <p className="text-slate-600 dark:text-slate-400 mb-4">
                 Verifique se a planilha contém as colunas necessárias e dados válidos
               </p>
               <Input
