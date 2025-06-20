@@ -13,7 +13,6 @@ import PieChartComponent from "@/components/PieChart";
 import SeasonalityChart from "@/components/SeasonalityChart";
 import CustomerRanking from "@/components/CustomerRanking";
 import MonthlyComparison from "@/components/MonthlyComparison";
-import GoalsIndicator from "@/components/GoalsIndicator";
 
 const Index = () => {
   const [data, setData] = useState([]);
