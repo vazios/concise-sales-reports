@@ -105,7 +105,7 @@ const Index = () => {
       return textoCompleto.trim();
     };
 
-    // Função melhorada para processar valores numéricos - removendo a lógica problemática de divisão por 100
+    // Função corrigida para processar valores numéricos
     const processarValorNumerico = (valor) => {
       console.log("Processando valor:", valor, "Tipo:", typeof valor);
       
@@ -115,8 +115,10 @@ const Index = () => {
 
       // Se já é um número válido, usar diretamente
       if (typeof valor === 'number' && !isNaN(valor)) {
-        console.log("Valor numérico direto:", valor);
-        return valor;
+        // Garantir que o valor seja um número simples sem conversões desnecessárias
+        const valorFinal = Number(valor);
+        console.log("Valor numérico processado:", valorFinal);
+        return valorFinal;
       }
 
       // Se é string, tentar converter
@@ -143,7 +145,7 @@ const Index = () => {
           valorLimpo = valorLimpo.replace(/,/g, '');
         }
 
-        const numeroConvertido = parseFloat(valorLimpo);
+        const numeroConvertido = Number(valorLimpo);
         console.log("Número convertido:", numeroConvertido);
         
         if (isNaN(numeroConvertido)) {
@@ -168,9 +170,9 @@ const Index = () => {
       const codigo = String(rowValues[0] || `V${String(index + 1).padStart(3, '0')}`);
       const cliente = String(rowValues[1] || 'Cliente não informado');
       
-      // Valor recebido (coluna G - índice 6) - usando função melhorada
+      // Valor recebido (coluna G - índice 6) - usando função corrigida
       const valorRecebido = processarValorNumerico(rowValues[6]);
-      console.log(`Valor processado para linha ${index + 1}:`, valorRecebido);
+      console.log(`Valor final processado para linha ${index + 1}:`, valorRecebido);
       
       // Forma de pagamento (coluna H - índice 7)
       let formaPagamento = 'Não informado';
@@ -210,12 +212,17 @@ const Index = () => {
         canal: canal
       };
       
-      console.log(`Item processado ${index + 1}:`, processedItem);
+      console.log(`Item final processado ${index + 1}:`, processedItem);
       return processedItem;
     }).filter(item => item.valor > 0); // Filtrar apenas vendas com valor
 
     console.log("Dados processados finais:", processedData);
     console.log("Total de vendas válidas:", processedData.length);
+    
+    // Calcular e logar o total para verificar
+    const totalCalculado = processedData.reduce((total, item) => total + Number(item.valor), 0);
+    console.log("Total calculado imediatamente após processamento:", totalCalculado);
+    
     return processedData;
   };
 
@@ -338,8 +345,13 @@ const Index = () => {
       if (!summary[item.formaPagamento]) {
         summary[item.formaPagamento] = 0;
       }
-      summary[item.formaPagamento] += Number(item.valor) || 0;
+      // Garantir que o valor seja tratado como número
+      const valorNumerico = Number(item.valor) || 0;
+      summary[item.formaPagamento] += valorNumerico;
     });
+    
+    console.log("Resumo por forma de pagamento:", summary);
+    
     return Object.entries(summary).map(([name, value]) => ({ 
       name, 
       value: Number(value) 
@@ -352,13 +364,23 @@ const Index = () => {
       if (!dailySales[item.data]) {
         dailySales[item.data] = 0;
       }
-      dailySales[item.data] += item.valor;
+      // Garantir que o valor seja tratado como número
+      const valorNumerico = Number(item.valor) || 0;
+      dailySales[item.data] += valorNumerico;
     });
     return Object.entries(dailySales).map(([date, total]) => ({ date, total }));
   };
 
   const getTotalSales = () => {
-    return filteredData.reduce((total, item) => total + item.valor, 0);
+    const total = filteredData.reduce((total, item) => {
+      const valorNumerico = Number(item.valor) || 0;
+      return total + valorNumerico;
+    }, 0);
+    
+    console.log("Total de vendas calculado:", total);
+    console.log("Dados filtrados para cálculo:", filteredData.map(item => ({ codigo: item.codigo, valor: item.valor })));
+    
+    return total;
   };
 
   const paymentMethods = [...new Set(data.map(item => item.formaPagamento))];
