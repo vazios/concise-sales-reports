@@ -105,7 +105,7 @@ const Index = () => {
       return textoCompleto.trim();
     };
 
-    // Função melhorada para processar valores numéricos com foco em .xls vs .xlsx
+    // Função melhorada para processar valores numéricos - removendo a lógica problemática de divisão por 100
     const processarValorNumerico = (valor) => {
       console.log("Processando valor:", valor, "Tipo:", typeof valor);
       
@@ -113,14 +113,9 @@ const Index = () => {
         return 0;
       }
 
-      // Se já é um número válido
+      // Se já é um número válido, usar diretamente
       if (typeof valor === 'number' && !isNaN(valor)) {
-        // Verificar se o número parece estar em centavos (muito comum em .xls)
-        // Se o valor for muito alto (acima de 100000), pode estar em centavos
-        if (valor > 100000) {
-          console.log("Valor possivelmente em centavos:", valor, "Convertendo para reais:", valor / 100);
-          return valor / 100;
-        }
+        console.log("Valor numérico direto:", valor);
         return valor;
       }
 
@@ -153,12 +148,6 @@ const Index = () => {
         
         if (isNaN(numeroConvertido)) {
           return 0;
-        }
-
-        // Verificar se o número parece estar em centavos
-        if (numeroConvertido > 100000) {
-          console.log("String convertida possivelmente em centavos:", numeroConvertido, "Convertendo para reais:", numeroConvertido / 100);
-          return numeroConvertido / 100;
         }
 
         return numeroConvertido;
