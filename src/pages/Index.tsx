@@ -29,11 +29,7 @@ const Index = () => {
   const processExcelData = (jsonData, fileName = '') => {
     console.log("=== INÍCIO DO PROCESSAMENTO ===");
     console.log("Nome do arquivo:", fileName);
-    console.log("Extensão do arquivo:", fileName.split('.').pop());
     console.log("Dados brutos do Excel:", jsonData);
-    
-    const isXlsFile = fileName.toLowerCase().endsWith('.xls') && !fileName.toLowerCase().endsWith('.xlsx');
-    console.log("É arquivo .xls?", isXlsFile);
     
     // Encontrar o índice do cabeçalho
     let headerRowIndex = -1;
@@ -103,17 +99,16 @@ const Index = () => {
       return textoCompleto.trim();
     };
 
-    // Função CORRIGIDA para processar valores
-    const processarValorNumerico = (valor, isXlsFile = false) => {
+    // Função simplificada para processar valores - SEM conversão
+    const processarValorNumerico = (valor) => {
       console.log("=== PROCESSANDO VALOR ===");
-      console.log("Valor original:", valor, "Tipo:", typeof valor, "É arquivo .xls?", isXlsFile);
+      console.log("Valor original:", valor, "Tipo:", typeof valor);
       
       if (valor === undefined || valor === null || valor === '') {
         console.log("Valor vazio, retornando 0");
         return 0;
       }
 
-      // Converter para número
       let numeroProcessado = 0;
       
       if (typeof valor === 'number') {
@@ -140,17 +135,7 @@ const Index = () => {
         }
       }
 
-      console.log("Número após conversão inicial:", numeroProcessado);
-
-      // LÓGICA ESPECÍFICA PARA ARQUIVOS .XLS
-      // Se é arquivo .xls E o valor é maior que 100 (indicando que pode estar em centavos)
-      if (isXlsFile && numeroProcessado >= 100) {
-        const valorConvertido = numeroProcessado / 100;
-        console.log("CONVERSÃO .XLS: Dividindo por 100 -", numeroProcessado, "->", valorConvertido);
-        return valorConvertido;
-      }
-
-      console.log("Valor final processado:", numeroProcessado);
+      console.log("Valor final processado (SEM conversão):", numeroProcessado);
       return numeroProcessado;
     };
 
@@ -163,8 +148,8 @@ const Index = () => {
       const codigo = String(rowValues[0] || `V${String(index + 1).padStart(3, '0')}`);
       const cliente = String(rowValues[1] || 'Cliente não informado');
       
-      // Valor recebido (coluna G - índice 6) - usando detecção de .xls
-      const valorRecebido = processarValorNumerico(rowValues[6], isXlsFile);
+      // Valor recebido (coluna G - índice 6) - SEM divisão por 100
+      const valorRecebido = processarValorNumerico(rowValues[6]);
       console.log(`VALOR FINAL PROCESSADO para linha ${index + 1}:`, valorRecebido);
       
       // Forma de pagamento (coluna H - índice 7)
@@ -213,7 +198,7 @@ const Index = () => {
     console.log("Total de vendas válidas:", processedData.length);
     
     const totalCalculado = processedData.reduce((total, item) => total + Number(item.valor), 0);
-    console.log("TOTAL CALCULADO IMEDIATAMENTE APÓS PROCESSAMENTO:", totalCalculado);
+    console.log("TOTAL CALCULADO (soma da coluna G):", totalCalculado);
     console.log("=== FIM DO PROCESSAMENTO ===\n");
     
     return processedData;
@@ -251,7 +236,6 @@ const Index = () => {
               return;
             }
 
-            // Passar o nome do arquivo para detecção de .xls
             const processedData = processExcelData(jsonData, file.name);
             
             if (processedData.length === 0) {
@@ -368,7 +352,7 @@ const Index = () => {
       return total + valorNumerico;
     }, 0);
     
-    console.log("=== CÁLCULO TOTAL VENDAS ===");
+    console.log("=== CÁLCULO TOTAL VENDAS (SOMA COLUNA G) ===");
     console.log("Total de vendas calculado:", total);
     console.log("Dados filtrados para cálculo:", filteredData.map(item => ({ 
       codigo: item.codigo, 
