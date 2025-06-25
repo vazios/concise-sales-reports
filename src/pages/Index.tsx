@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -350,9 +349,12 @@ const Index = () => {
       if (!summary[item.formaPagamento]) {
         summary[item.formaPagamento] = 0;
       }
-      summary[item.formaPagamento] += item.valor;
+      summary[item.formaPagamento] += Number(item.valor) || 0;
     });
-    return Object.entries(summary).map(([name, value]) => ({ name, value }));
+    return Object.entries(summary).map(([name, value]) => ({ 
+      name, 
+      value: Number(value) 
+    }));
   };
 
   const getDailySales = () => {
