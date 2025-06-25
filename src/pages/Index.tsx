@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -104,7 +103,7 @@ const Index = () => {
       return textoCompleto.trim();
     };
 
-    // Função específica para processar valores com detecção de .xls
+    // Função CORRIGIDA para processar valores
     const processarValorNumerico = (valor, isXlsFile = false) => {
       console.log("=== PROCESSANDO VALOR ===");
       console.log("Valor original:", valor, "Tipo:", typeof valor, "É arquivo .xls?", isXlsFile);
@@ -114,28 +113,14 @@ const Index = () => {
         return 0;
       }
 
-      // Se já é um número válido
-      if (typeof valor === 'number' && !isNaN(valor)) {
-        console.log("Valor é número:", valor);
-        
-        // Para arquivos .xls, verificar se o valor pode estar em centavos
-        if (isXlsFile && valor > 1000) {
-          console.log("ATENÇÃO: Arquivo .xls com valor alto, pode estar em centavos");
-          // Dividir por 100 para converter centavos em reais
-          const valorConvertido = valor / 100;
-          console.log("Valor convertido de centavos para reais:", valorConvertido);
-          return valorConvertido;
-        }
-        
-        console.log("Valor numérico final:", valor);
-        return valor;
-      }
-
-      // Se é string, tentar converter
-      if (typeof valor === 'string') {
+      // Converter para número
+      let numeroProcessado = 0;
+      
+      if (typeof valor === 'number') {
+        numeroProcessado = valor;
+      } else if (typeof valor === 'string') {
+        // Limpar string e converter
         let valorLimpo = valor.toString().trim().replace(/[^\d,.-]/g, '');
-        
-        console.log("Valor original string:", valor, "Valor limpo:", valorLimpo);
         
         if (!valorLimpo) {
           return 0;
@@ -148,25 +133,25 @@ const Index = () => {
           valorLimpo = valorLimpo.replace(/,/g, '');
         }
 
-        const numeroConvertido = Number(valorLimpo);
-        console.log("Número convertido de string:", numeroConvertido);
+        numeroProcessado = Number(valorLimpo);
         
-        if (isNaN(numeroConvertido)) {
+        if (isNaN(numeroProcessado)) {
           return 0;
         }
-
-        // Para arquivos .xls, aplicar mesma lógica de conversão
-        if (isXlsFile && numeroConvertido > 1000) {
-          console.log("ATENÇÃO: String de arquivo .xls com valor alto, convertendo de centavos");
-          const valorConvertido = numeroConvertido / 100;
-          console.log("Valor string convertido de centavos para reais:", valorConvertido);
-          return valorConvertido;
-        }
-
-        return numeroConvertido;
       }
 
-      return 0;
+      console.log("Número após conversão inicial:", numeroProcessado);
+
+      // LÓGICA ESPECÍFICA PARA ARQUIVOS .XLS
+      // Se é arquivo .xls E o valor é maior que 100 (indicando que pode estar em centavos)
+      if (isXlsFile && numeroProcessado >= 100) {
+        const valorConvertido = numeroProcessado / 100;
+        console.log("CONVERSÃO .XLS: Dividindo por 100 -", numeroProcessado, "->", valorConvertido);
+        return valorConvertido;
+      }
+
+      console.log("Valor final processado:", numeroProcessado);
+      return numeroProcessado;
     };
 
     // Processar cada linha de dados
@@ -383,8 +368,14 @@ const Index = () => {
       return total + valorNumerico;
     }, 0);
     
+    console.log("=== CÁLCULO TOTAL VENDAS ===");
     console.log("Total de vendas calculado:", total);
-    console.log("Dados filtrados para cálculo:", filteredData.map(item => ({ codigo: item.codigo, valor: item.valor })));
+    console.log("Dados filtrados para cálculo:", filteredData.map(item => ({ 
+      codigo: item.codigo, 
+      valor: item.valor,
+      valorNumerico: Number(item.valor)
+    })));
+    console.log("=== FIM CÁLCULO TOTAL ===");
     
     return total;
   };
