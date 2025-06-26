@@ -19,7 +19,7 @@ const SalesDetailModal = ({ isOpen, onClose, data }) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-5xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <CreditCard className="h-6 w-6 text-blue-600" />
@@ -73,6 +73,7 @@ const SalesDetailModal = ({ isOpen, onClose, data }) => {
               <TableRow className="bg-slate-50">
                 <TableHead className="font-semibold">Código</TableHead>
                 <TableHead className="font-semibold">Cliente</TableHead>
+                <TableHead className="font-semibold">Canal</TableHead>
                 <TableHead className="font-semibold">Valor</TableHead>
                 <TableHead className="font-semibold">Data</TableHead>
               </TableRow>
@@ -82,6 +83,7 @@ const SalesDetailModal = ({ isOpen, onClose, data }) => {
                 <TableRow key={sale.id} className="hover:bg-slate-50 transition-colors">
                   <TableCell className="font-medium">{sale.codigo}</TableCell>
                   <TableCell>{sale.cliente}</TableCell>
+                  <TableCell>{sale.canal || 'Não informado'}</TableCell>
                   <TableCell className="font-semibold text-green-700">
                     {formatCurrency(sale.valor)}
                   </TableCell>
