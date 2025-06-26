@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -30,11 +29,7 @@ const Index = () => {
   const processExcelData = (jsonData, fileName = '') => {
     console.log("=== INÍCIO DO PROCESSAMENTO ===");
     console.log("Nome do arquivo:", fileName);
-    console.log("Extensão do arquivo:", fileName.split('.').pop());
     console.log("Dados brutos do Excel:", jsonData);
-    
-    const isXlsFile = fileName.toLowerCase().endsWith('.xls') && !fileName.toLowerCase().endsWith('.xlsx');
-    console.log("É arquivo .xls?", isXlsFile);
     
     // Encontrar o índice do cabeçalho
     let headerRowIndex = -1;
@@ -104,30 +99,19 @@ const Index = () => {
       return textoCompleto.trim();
     };
 
-    // Função específica para processar valores com detecção de .xls
-    const processarValorNumerico = (valor, isXlsFile = false) => {
+    // Função para processar valores numericamente sem modificações
+    const processarValorNumerico = (valor) => {
       console.log("=== PROCESSANDO VALOR ===");
-      console.log("Valor original:", valor, "Tipo:", typeof valor, "É arquivo .xls?", isXlsFile);
+      console.log("Valor original:", valor, "Tipo:", typeof valor);
       
       if (valor === undefined || valor === null || valor === '') {
         console.log("Valor vazio, retornando 0");
         return 0;
       }
 
-      // Se já é um número válido
+      // Se já é um número válido, usar diretamente
       if (typeof valor === 'number' && !isNaN(valor)) {
-        console.log("Valor é número:", valor);
-        
-        // Para arquivos .xls, verificar se o valor pode estar em centavos
-        if (isXlsFile && valor > 1000) {
-          console.log("ATENÇÃO: Arquivo .xls com valor alto, pode estar em centavos");
-          // Dividir por 100 para converter centavos em reais
-          const valorConvertido = valor / 100;
-          console.log("Valor convertido de centavos para reais:", valorConvertido);
-          return valorConvertido;
-        }
-        
-        console.log("Valor numérico final:", valor);
+        console.log("Valor é número válido:", valor);
         return valor;
       }
 
@@ -155,14 +139,6 @@ const Index = () => {
           return 0;
         }
 
-        // Para arquivos .xls, aplicar mesma lógica de conversão
-        if (isXlsFile && numeroConvertido > 1000) {
-          console.log("ATENÇÃO: String de arquivo .xls com valor alto, convertendo de centavos");
-          const valorConvertido = numeroConvertido / 100;
-          console.log("Valor string convertido de centavos para reais:", valorConvertido);
-          return valorConvertido;
-        }
-
         return numeroConvertido;
       }
 
@@ -178,8 +154,8 @@ const Index = () => {
       const codigo = String(rowValues[0] || `V${String(index + 1).padStart(3, '0')}`);
       const cliente = String(rowValues[1] || 'Cliente não informado');
       
-      // Valor recebido (coluna G - índice 6) - usando detecção de .xls
-      const valorRecebido = processarValorNumerico(rowValues[6], isXlsFile);
+      // Valor recebido (coluna G - índice 6) - usar valor exatamente como está
+      const valorRecebido = processarValorNumerico(rowValues[6]);
       console.log(`VALOR FINAL PROCESSADO para linha ${index + 1}:`, valorRecebido);
       
       // Forma de pagamento (coluna H - índice 7)
@@ -228,7 +204,7 @@ const Index = () => {
     console.log("Total de vendas válidas:", processedData.length);
     
     const totalCalculado = processedData.reduce((total, item) => total + Number(item.valor), 0);
-    console.log("TOTAL CALCULADO IMEDIATAMENTE APÓS PROCESSAMENTO:", totalCalculado);
+    console.log("TOTAL CALCULADO:", totalCalculado);
     console.log("=== FIM DO PROCESSAMENTO ===\n");
     
     return processedData;
@@ -266,7 +242,6 @@ const Index = () => {
               return;
             }
 
-            // Passar o nome do arquivo para detecção de .xls
             const processedData = processExcelData(jsonData, file.name);
             
             if (processedData.length === 0) {
