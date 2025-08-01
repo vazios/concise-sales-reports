@@ -26,9 +26,7 @@ const Index = () => {
   const [selectedPaymentDetails, setSelectedPaymentDetails] = useState([]);
   const [hasUploadedFile, setHasUploadedFile] = useState(false);
 
-  const processExcelData = (jsonData, fileName = '') => {
-    console.log("=== INÍCIO DO PROCESSAMENTO ===");
-    console.log("Nome do arquivo:", fileName);
+  const processExcelData = (jsonData) => {
     console.log("Dados brutos do Excel:", jsonData);
     
     // Encontrar o índice do cabeçalho
@@ -36,6 +34,7 @@ const Index = () => {
     for (let i = 0; i < jsonData.length; i++) {
       const row = jsonData[i];
       const values = Object.values(row);
+      // Procurar por uma linha que contenha palavras-chave do cabeçalho
       const rowText = values.join(' ').toUpperCase();
       if (rowText.includes('CÓDIGO') || rowText.includes('CLIENTE') || rowText.includes('VALOR')) {
         headerRowIndex = i;
@@ -45,19 +44,23 @@ const Index = () => {
 
     console.log("Índice do cabeçalho encontrado:", headerRowIndex);
 
+    // Se não encontrou cabeçalho, assumir primeira linha
     if (headerRowIndex === -1) {
       headerRowIndex = 0;
     }
 
+    // Pegar todas as linhas de dados (exceto cabeçalho e total)
     const dataRows = jsonData.slice(headerRowIndex + 1).filter((row, index) => {
       const rowValues = Object.values(row);
       const firstColumn = rowValues[0];
       
+      // Verificar se não é linha de total
       const rowText = rowValues.join(' ').toUpperCase();
       if (rowText.includes('TOTAL')) {
         return false;
       }
       
+      // Se a primeira coluna é um número válido, é uma linha de dados
       return firstColumn && 
              (typeof firstColumn === 'number' || 
               (typeof firstColumn === 'string' && !isNaN(Number(firstColumn))));
@@ -66,6 +69,7 @@ const Index = () => {
     console.log("Linhas de dados filtradas:", dataRows);
     console.log("Número de linhas encontradas:", dataRows.length);
 
+    // Função para extrair a forma de pagamento
     const extrairFormaPagamento = (textoCompleto) => {
       if (!textoCompleto || typeof textoCompleto !== 'string') {
         return 'Não informado';
@@ -74,6 +78,7 @@ const Index = () => {
       const texto = textoCompleto.toUpperCase().trim();
       console.log("Analisando forma de pagamento:", texto);
       
+      // Mapear formas de pagamento específicas - procurar pelos termos mais específicos primeiro
       const formasPagamento = [
         { chave: 'MASTERCARD_MAESTRO', valor: 'Mastercard Maestro' },
         { chave: 'VISA_ELECTRON', valor: 'Visa Electron' },
@@ -88,6 +93,7 @@ const Index = () => {
         { chave: 'PICPAY', valor: 'PicPay' }
       ];
 
+      // Procurar por cada forma de pagamento no texto
       for (const forma of formasPagamento) {
         if (texto.includes(forma.chave)) {
           console.log(`Forma de pagamento encontrada: ${forma.chave} -> ${forma.valor}`);
@@ -99,58 +105,74 @@ const Index = () => {
       return textoCompleto.trim();
     };
 
-    // Função simplificada para processar valores - SEM conversão
+    // Função corrigida para processar valores numéricos
     const processarValorNumerico = (valor) => {
-      console.log("=== PROCESSANDO VALOR ===");
-      console.log("Valor original:", valor, "Tipo:", typeof valor);
+      console.log("Processando valor:", valor, "Tipo:", typeof valor);
       
       if (valor === undefined || valor === null || valor === '') {
-        console.log("Valor vazio, retornando 0");
         return 0;
       }
 
-      let numeroProcessado = 0;
-      
-      if (typeof valor === 'number') {
-        numeroProcessado = valor;
-      } else if (typeof valor === 'string') {
-        // Limpar string e converter
+      // Se já é um número válido, usar diretamente
+      if (typeof valor === 'number' && !isNaN(valor)) {
+        // Garantir que o valor seja um número simples sem conversões desnecessárias
+        const valorFinal = Number(valor);
+        console.log("Valor numérico processado:", valorFinal);
+        return valorFinal;
+      }
+
+      // Se é string, tentar converter
+      if (typeof valor === 'string') {
+        // Remover espaços e caracteres não numéricos exceto vírgula, ponto e sinal negativo
         let valorLimpo = valor.toString().trim().replace(/[^\d,.-]/g, '');
         
+        console.log("Valor original:", valor, "Valor limpo:", valorLimpo);
+        
+        // Se está vazio após limpeza, retornar 0
         if (!valorLimpo) {
           return 0;
         }
 
         // Tratar diferentes formatos de número
+        // Formato brasileiro: 1.234,56 ou 1234,56
         if (valorLimpo.includes(',') && valorLimpo.lastIndexOf(',') > valorLimpo.lastIndexOf('.')) {
+          // Remover pontos (separadores de milhares) e trocar vírgula por ponto
           valorLimpo = valorLimpo.replace(/\./g, '').replace(',', '.');
-        } else if (valorLimpo.includes(',')) {
+        }
+        // Formato americano: 1,234.56 ou 1234.56
+        else if (valorLimpo.includes(',')) {
+          // Remover vírgulas (separadores de milhares)
           valorLimpo = valorLimpo.replace(/,/g, '');
         }
 
-        numeroProcessado = Number(valorLimpo);
+        const numeroConvertido = Number(valorLimpo);
+        console.log("Número convertido:", numeroConvertido);
         
-        if (isNaN(numeroProcessado)) {
+        if (isNaN(numeroConvertido)) {
           return 0;
         }
+
+        return numeroConvertido;
       }
 
-      console.log("Valor final processado (SEM conversão):", numeroProcessado);
-      return numeroProcessado;
+      return 0;
     };
 
-    // Processar cada linha de dados
+    // Processar cada linha de dados usando o mapeamento das colunas
     const processedData = dataRows.map((row, index) => {
       const rowValues = Object.values(row);
-      console.log(`\n=== PROCESSANDO LINHA ${index + 1} ===`);
-      console.log("Valores da linha:", rowValues);
+      console.log(`Linha ${index + 1}:`, rowValues);
+      
+      // Mapear colunas conforme especificado:
+      // A = código (índice 0), B = cliente (índice 1), G = valor recebido (índice 6), 
+      // H = forma de pagamento (índice 7), I = canal (índice 8), J = data (índice 9)
       
       const codigo = String(rowValues[0] || `V${String(index + 1).padStart(3, '0')}`);
       const cliente = String(rowValues[1] || 'Cliente não informado');
       
-      // Valor recebido (coluna G - índice 6) - SEM divisão por 100
+      // Valor recebido (coluna G - índice 6) - usando função corrigida
       const valorRecebido = processarValorNumerico(rowValues[6]);
-      console.log(`VALOR FINAL PROCESSADO para linha ${index + 1}:`, valorRecebido);
+      console.log(`Valor final processado para linha ${index + 1}:`, valorRecebido);
       
       // Forma de pagamento (coluna H - índice 7)
       let formaPagamento = 'Não informado';
@@ -170,6 +192,7 @@ const Index = () => {
       if (rowValues[9] !== undefined && rowValues[9] !== null) {
         const dataValue = rowValues[9];
         if (typeof dataValue === 'number' && dataValue > 40000 && dataValue < 50000) {
+          // Converter número serial do Excel para data
           const excelDate = new Date((dataValue - 25569) * 86400 * 1000);
           dataFormatada = excelDate.toLocaleDateString('pt-BR');
         } else if (typeof dataValue === 'string' && dataValue.includes('/')) {
@@ -189,17 +212,16 @@ const Index = () => {
         canal: canal
       };
       
-      console.log(`ITEM FINAL PROCESSADO ${index + 1}:`, processedItem);
+      console.log(`Item final processado ${index + 1}:`, processedItem);
       return processedItem;
-    }).filter(item => item.valor > 0);
+    }).filter(item => item.valor > 0); // Filtrar apenas vendas com valor
 
-    console.log("\n=== RESULTADO FINAL ===");
     console.log("Dados processados finais:", processedData);
     console.log("Total de vendas válidas:", processedData.length);
     
+    // Calcular e logar o total para verificar
     const totalCalculado = processedData.reduce((total, item) => total + Number(item.valor), 0);
-    console.log("TOTAL CALCULADO (soma da coluna G):", totalCalculado);
-    console.log("=== FIM DO PROCESSAMENTO ===\n");
+    console.log("Total calculado imediatamente após processamento:", totalCalculado);
     
     return processedData;
   };
@@ -207,8 +229,6 @@ const Index = () => {
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (file) {
-      console.log("Arquivo selecionado:", file.name, "Tipo:", file.type);
-      
       if (file.type.includes('sheet') || file.name.endsWith('.xls') || file.name.endsWith('.xlsx')) {
         const reader = new FileReader();
         
@@ -222,9 +242,11 @@ const Index = () => {
             const data = new Uint8Array(result as ArrayBuffer);
             const workbook = XLSX.read(data, { type: 'array' });
             
+            // Pegar a primeira planilha
             const worksheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[worksheetName];
             
+            // Converter para JSON
             const jsonData = XLSX.utils.sheet_to_json(worksheet);
             
             if (jsonData.length === 0) {
@@ -236,7 +258,8 @@ const Index = () => {
               return;
             }
 
-            const processedData = processExcelData(jsonData, file.name);
+            // Processar os dados
+            const processedData = processExcelData(jsonData);
             
             if (processedData.length === 0) {
               toast({
@@ -322,6 +345,7 @@ const Index = () => {
       if (!summary[item.formaPagamento]) {
         summary[item.formaPagamento] = 0;
       }
+      // Garantir que o valor seja tratado como número
       const valorNumerico = Number(item.valor) || 0;
       summary[item.formaPagamento] += valorNumerico;
     });
@@ -340,6 +364,7 @@ const Index = () => {
       if (!dailySales[item.data]) {
         dailySales[item.data] = 0;
       }
+      // Garantir que o valor seja tratado como número
       const valorNumerico = Number(item.valor) || 0;
       dailySales[item.data] += valorNumerico;
     });
@@ -352,14 +377,8 @@ const Index = () => {
       return total + valorNumerico;
     }, 0);
     
-    console.log("=== CÁLCULO TOTAL VENDAS (SOMA COLUNA G) ===");
     console.log("Total de vendas calculado:", total);
-    console.log("Dados filtrados para cálculo:", filteredData.map(item => ({ 
-      codigo: item.codigo, 
-      valor: item.valor,
-      valorNumerico: Number(item.valor)
-    })));
-    console.log("=== FIM CÁLCULO TOTAL ===");
+    console.log("Dados filtrados para cálculo:", filteredData.map(item => ({ codigo: item.codigo, valor: item.valor })));
     
     return total;
   };
