@@ -9,14 +9,11 @@ import { Calendar, Filter, X } from "lucide-react";
 interface AdvancedFiltersProps {
   paymentMethods: string[];
   channels: string[];
-  dates: string[];
+  dateRange: { start: string; end: string };
   selectedPaymentMethod: string;
   selectedChannel: string;
-  selectedDate: string;
-  dateRange: { start: string; end: string };
   onPaymentMethodChange: (value: string) => void;
   onChannelChange: (value: string) => void;
-  onDateChange: (value: string) => void;
   onDateRangeChange: (range: { start: string; end: string }) => void;
   onApplyFilters: () => void;
   onResetFilters: () => void;
@@ -25,14 +22,11 @@ interface AdvancedFiltersProps {
 const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
   paymentMethods,
   channels,
-  dates,
+  dateRange,
   selectedPaymentMethod,
   selectedChannel,
-  selectedDate,
-  dateRange,
   onPaymentMethodChange,
   onChannelChange,
-  onDateChange,
   onDateRangeChange,
   onApplyFilters,
   onResetFilters
@@ -48,7 +42,7 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
       <CardContent>
         <div className="space-y-4">
           {/* Primeira linha de filtros */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
                 Forma de Pagamento
@@ -83,54 +77,35 @@ const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
               </Select>
             </div>
             
-            <div>
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
-                Data
-              </label>
-              <Select value={selectedDate} onValueChange={onDateChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma data..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas as datas</SelectItem>
-                  <SelectItem value="custom">Período personalizado</SelectItem>
-                  {dates.map(date => (
-                    <SelectItem key={date} value={date}>{date}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
           </div>
 
-          {/* Filtro de período personalizado */}
-          {selectedDate === 'custom' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
-              <div>
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
-                  <Calendar className="h-4 w-4 inline mr-1" />
-                  Data Inicial
-                </label>
-                <Input
-                  type="date"
-                  value={dateRange.start}
-                  onChange={(e) => onDateRangeChange({ ...dateRange, start: e.target.value })}
-                  className="w-full"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
-                  <Calendar className="h-4 w-4 inline mr-1" />
-                  Data Final
-                </label>
-                <Input
-                  type="date"
-                  value={dateRange.end}
-                  onChange={(e) => onDateRangeChange({ ...dateRange, end: e.target.value })}
-                  className="w-full"
-                />
-              </div>
+          {/* Filtro de período */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+            <div>
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                <Calendar className="h-4 w-4 inline mr-1" />
+                Data Inicial
+              </label>
+              <Input
+                type="date"
+                value={dateRange.start}
+                onChange={(e) => onDateRangeChange({ ...dateRange, start: e.target.value })}
+                className="w-full"
+              />
             </div>
-          )}
+            <div>
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
+                <Calendar className="h-4 w-4 inline mr-1" />
+                Data Final
+              </label>
+              <Input
+                type="date"
+                value={dateRange.end}
+                onChange={(e) => onDateRangeChange({ ...dateRange, end: e.target.value })}
+                className="w-full"
+              />
+            </div>
+          </div>
           
           {/* Botões de ação */}
           <div className="flex flex-col sm:flex-row gap-2 pt-2">

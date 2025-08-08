@@ -7,10 +7,10 @@ import SalesChart from "@/components/SalesChart";
 import TrendChart from "@/components/TrendChart";
 import SalesDetailModal from "@/components/SalesDetailModal";
 import * as XLSX from 'xlsx';
-import PieChartComponent from "@/components/PieChart";
+
 import SeasonalityChart from "@/components/SeasonalityChart";
 import CustomerRanking from "@/components/CustomerRanking";
-import MonthlyComparison from "@/components/MonthlyComparison";
+
 import DragDropUpload from "@/components/DragDropUpload";
 import AdvancedFilters from "@/components/AdvancedFilters";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -20,7 +20,6 @@ const Index = () => {
   const [filteredData, setFilteredData] = useState([]);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("all");
   const [selectedChannel, setSelectedChannel] = useState("all");
-  const [selectedDate, setSelectedDate] = useState("all");
   const [dateRange, setDateRange] = useState({ start: "", end: "" });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPaymentDetails, setSelectedPaymentDetails] = useState([]);
@@ -67,35 +66,8 @@ const Index = () => {
     console.log("Número de linhas encontradas:", dataRows.length);
 
     const extrairFormaPagamento = (textoCompleto) => {
-      if (!textoCompleto || typeof textoCompleto !== 'string') {
-        return 'Não informado';
-      }
-
-      const texto = textoCompleto.toUpperCase().trim();
-      console.log("Analisando forma de pagamento:", texto);
-      
-      const formasPagamento = [
-        { chave: 'MASTERCARD_MAESTRO', valor: 'Mastercard Maestro' },
-        { chave: 'VISA_ELECTRON', valor: 'Visa Electron' },
-        { chave: 'VISA', valor: 'Visa' },
-        { chave: 'ELO', valor: 'Elo' },
-        { chave: 'MASTERCARD', valor: 'Mastercard' },
-        { chave: 'PIX', valor: 'PIX' },
-        { chave: 'CARTEIRA', valor: 'Carteira Digital' },
-        { chave: 'CRÉDITO', valor: 'Crédito' },
-        { chave: 'DÉBITO', valor: 'Débito' },
-        { chave: 'DINHEIRO', valor: 'Dinheiro' },
-        { chave: 'PICPAY', valor: 'PicPay' }
-      ];
-
-      for (const forma of formasPagamento) {
-        if (texto.includes(forma.chave)) {
-          console.log(`Forma de pagamento encontrada: ${forma.chave} -> ${forma.valor}`);
-          return forma.valor;
-        }
-      }
-
-      console.log("Nenhuma forma conhecida encontrada, retornando texto original");
+      if (textoCompleto === undefined || textoCompleto === null) return 'Não informado';
+      if (typeof textoCompleto !== 'string') return String(textoCompleto);
       return textoCompleto.trim();
     };
 
@@ -294,15 +266,13 @@ const Index = () => {
       filtered = filtered.filter(item => item.canal === selectedChannel);
     }
     
-    if (selectedDate === "custom" && dateRange.start && dateRange.end) {
+    if (dateRange.start && dateRange.end) {
       filtered = filtered.filter(item => {
         const itemDate = new Date(item.data.split('/').reverse().join('-'));
         const startDate = new Date(dateRange.start);
         const endDate = new Date(dateRange.end);
         return itemDate >= startDate && itemDate <= endDate;
       });
-    } else if (selectedDate !== "all" && selectedDate !== "custom") {
-      filtered = filtered.filter(item => item.data === selectedDate);
     }
     
     setFilteredData(filtered);
@@ -311,7 +281,6 @@ const Index = () => {
   const resetFilters = () => {
     setSelectedPaymentMethod("all");
     setSelectedChannel("all");
-    setSelectedDate("all");
     setDateRange({ start: "", end: "" });
     setFilteredData(data);
   };
@@ -366,7 +335,6 @@ const Index = () => {
 
   const paymentMethods = [...new Set(data.map(item => item.formaPagamento))];
   const channels = [...new Set(data.map(item => item.canal))];
-  const dates = [...new Set(data.map(item => item.data))].sort();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 p-4 sm:p-6 transition-colors">
@@ -398,14 +366,11 @@ const Index = () => {
             <AdvancedFilters
               paymentMethods={paymentMethods}
               channels={channels}
-              dates={dates}
+              dateRange={dateRange}
               selectedPaymentMethod={selectedPaymentMethod}
               selectedChannel={selectedChannel}
-              selectedDate={selectedDate}
-              dateRange={dateRange}
               onPaymentMethodChange={setSelectedPaymentMethod}
               onChannelChange={setSelectedChannel}
-              onDateChange={setSelectedDate}
               onDateRangeChange={setDateRange}
               onApplyFilters={applyFilters}
               onResetFilters={resetFilters}
@@ -455,13 +420,10 @@ const Index = () => {
             </div>
 
             {/* Gráficos Principais */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 gap-4 sm:gap-6">
               <SalesChart 
                 data={getPaymentMethodSummary()} 
                 onBarClick={handleChartClick}
-              />
-              <PieChartComponent 
-                data={getPaymentMethodSummary()}
               />
             </div>
 
@@ -471,9 +433,8 @@ const Index = () => {
               <SeasonalityChart data={filteredData} />
             </div>
 
-            {/* Comparativo e Ranking */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-              <MonthlyComparison data={filteredData} />
+            {/* Ranking de Clientes */}
+            <div className="grid grid-cols-1 gap-4 sm:gap-6">
               <CustomerRanking data={filteredData} />
             </div>
 
