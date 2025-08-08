@@ -1,74 +1,372 @@
-import { useState, useMemo } from "react";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { Card, CardContent } from "@/components/ui/card";
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Upload } from "lucide-react";
-import DragDropUpload from "@/components/DragDropUpload";
-import AdvancedFilters from "@/components/AdvancedFilters";
+import { DollarSign, TrendingUp, BarChart3, Upload } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 import SalesChart from "@/components/SalesChart";
 import TrendChart from "@/components/TrendChart";
 import SalesDetailModal from "@/components/SalesDetailModal";
+import * as XLSX from 'xlsx';
 import PieChartComponent from "@/components/PieChart";
 import SeasonalityChart from "@/components/SeasonalityChart";
 import CustomerRanking from "@/components/CustomerRanking";
 import MonthlyComparison from "@/components/MonthlyComparison";
-import SalesMetrics from "@/components/SalesMetrics";
-import ExportControls from "@/components/ExportControls";
-import { LoadingSpinner, ChartSkeleton } from "@/components/ui/loading";
-import { useExcelProcessor } from "@/hooks/useExcelProcessor";
-import { useSalesData } from "@/hooks/useSalesData";
-import { SalesData } from "@/types/sales";
+import DragDropUpload from "@/components/DragDropUpload";
+import AdvancedFilters from "@/components/AdvancedFilters";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const Index = () => {
+  const [data, setData] = useState([]);
+  const [filteredData, setFilteredData] = useState([]);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("all");
+  const [selectedChannel, setSelectedChannel] = useState("all");
+  const [selectedDate, setSelectedDate] = useState("all");
+  const [dateRange, setDateRange] = useState({ start: "", end: "" });
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedPaymentDetails, setSelectedPaymentDetails] = useState<SalesData[]>([]);
+  const [selectedPaymentDetails, setSelectedPaymentDetails] = useState([]);
   const [hasUploadedFile, setHasUploadedFile] = useState(false);
 
-  const { processFile, isProcessing } = useExcelProcessor();
-  const {
-    data,
-    setData,
-    filteredData,
-    filters,
-    updateFilters,
-    resetFilters,
-    paymentMethodSummary,
-    dailySales,
-    totalSales,
-    paymentMethods,
-    channels,
-    dates
-  } = useSalesData();
+  const processExcelData = (jsonData, fileName = '') => {
+    console.log("=== INÍCIO DO PROCESSAMENTO ===");
+    console.log("Nome do arquivo:", fileName);
+    console.log("Dados brutos do Excel:", jsonData);
+    
+    // Encontrar o índice do cabeçalho
+    let headerRowIndex = -1;
+    for (let i = 0; i < jsonData.length; i++) {
+      const row = jsonData[i];
+      const values = Object.values(row);
+      const rowText = values.join(' ').toUpperCase();
+      if (rowText.includes('CÓDIGO') || rowText.includes('CLIENTE') || rowText.includes('VALOR')) {
+        headerRowIndex = i;
+        break;
+      }
+    }
 
-  // Métricas calculadas
-  const averageTicket = useMemo(() => {
-    return filteredData.length > 0 ? totalSales / filteredData.length : 0;
-  }, [totalSales, filteredData.length]);
+    console.log("Índice do cabeçalho encontrado:", headerRowIndex);
 
-  const uniqueClients = useMemo(() => {
-    const uniqueClientNames = new Set(filteredData.map(item => item.cliente));
-    return uniqueClientNames.size;
-  }, [filteredData]);
+    if (headerRowIndex === -1) {
+      headerRowIndex = 0;
+    }
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const dataRows = jsonData.slice(headerRowIndex + 1).filter((row, index) => {
+      const rowValues = Object.values(row);
+      const firstColumn = rowValues[0];
+      
+      const rowText = rowValues.join(' ').toUpperCase();
+      if (rowText.includes('TOTAL')) {
+        return false;
+      }
+      
+      return firstColumn && 
+             (typeof firstColumn === 'number' || 
+              (typeof firstColumn === 'string' && !isNaN(Number(firstColumn))));
+    });
 
-    try {
-      const processedData = await processFile(file);
-      setData(processedData);
-      setHasUploadedFile(true);
-    } catch (error) {
-      console.error("Erro ao processar arquivo:", error);
+    console.log("Linhas de dados filtradas:", dataRows);
+    console.log("Número de linhas encontradas:", dataRows.length);
+
+    const extrairFormaPagamento = (textoCompleto) => {
+      if (!textoCompleto || typeof textoCompleto !== 'string') {
+        return 'Não informado';
+      }
+
+      const texto = textoCompleto.toUpperCase().trim();
+      console.log("Analisando forma de pagamento:", texto);
+      
+      const formasPagamento = [
+        { chave: 'MASTERCARD_MAESTRO', valor: 'Mastercard Maestro' },
+        { chave: 'VISA_ELECTRON', valor: 'Visa Electron' },
+        { chave: 'VISA', valor: 'Visa' },
+        { chave: 'ELO', valor: 'Elo' },
+        { chave: 'MASTERCARD', valor: 'Mastercard' },
+        { chave: 'PIX', valor: 'PIX' },
+        { chave: 'CARTEIRA', valor: 'Carteira Digital' },
+        { chave: 'CRÉDITO', valor: 'Crédito' },
+        { chave: 'DÉBITO', valor: 'Débito' },
+        { chave: 'DINHEIRO', valor: 'Dinheiro' },
+        { chave: 'PICPAY', valor: 'PicPay' }
+      ];
+
+      for (const forma of formasPagamento) {
+        if (texto.includes(forma.chave)) {
+          console.log(`Forma de pagamento encontrada: ${forma.chave} -> ${forma.valor}`);
+          return forma.valor;
+        }
+      }
+
+      console.log("Nenhuma forma conhecida encontrada, retornando texto original");
+      return textoCompleto.trim();
+    };
+
+    // Função para processar valores numericamente sem modificações
+    const processarValorNumerico = (valor) => {
+      console.log("=== PROCESSANDO VALOR ===");
+      console.log("Valor original:", valor, "Tipo:", typeof valor);
+      
+      if (valor === undefined || valor === null || valor === '') {
+        console.log("Valor vazio, retornando 0");
+        return 0;
+      }
+
+      // Se já é um número válido, usar diretamente
+      if (typeof valor === 'number' && !isNaN(valor)) {
+        console.log("Valor é número válido:", valor);
+        return valor;
+      }
+
+      // Se é string, tentar converter
+      if (typeof valor === 'string') {
+        let valorLimpo = valor.toString().trim().replace(/[^\d,.-]/g, '');
+        
+        console.log("Valor original string:", valor, "Valor limpo:", valorLimpo);
+        
+        if (!valorLimpo) {
+          return 0;
+        }
+
+        // Tratar diferentes formatos de número
+        if (valorLimpo.includes(',') && valorLimpo.lastIndexOf(',') > valorLimpo.lastIndexOf('.')) {
+          valorLimpo = valorLimpo.replace(/\./g, '').replace(',', '.');
+        } else if (valorLimpo.includes(',')) {
+          valorLimpo = valorLimpo.replace(/,/g, '');
+        }
+
+        const numeroConvertido = Number(valorLimpo);
+        console.log("Número convertido de string:", numeroConvertido);
+        
+        if (isNaN(numeroConvertido)) {
+          return 0;
+        }
+
+        return numeroConvertido;
+      }
+
+      return 0;
+    };
+
+    // Processar cada linha de dados
+    const processedData = dataRows.map((row, index) => {
+      const rowValues = Object.values(row);
+      console.log(`\n=== PROCESSANDO LINHA ${index + 1} ===`);
+      console.log("Valores da linha:", rowValues);
+      
+      const codigo = String(rowValues[0] || `V${String(index + 1).padStart(3, '0')}`);
+      const cliente = String(rowValues[1] || 'Cliente não informado');
+      
+      // Valor recebido (coluna G - índice 6) - usar valor exatamente como está
+      const valorRecebido = processarValorNumerico(rowValues[6]);
+      console.log(`VALOR FINAL PROCESSADO para linha ${index + 1}:`, valorRecebido);
+      
+      // Forma de pagamento (coluna H - índice 7)
+      let formaPagamento = 'Não informado';
+      if (rowValues[7] !== undefined && rowValues[7] !== null) {
+        const formaPagamentoTexto = String(rowValues[7] || '');
+        formaPagamento = extrairFormaPagamento(formaPagamentoTexto);
+      }
+      
+      // Canal (coluna I - índice 8)
+      let canal = 'Não informado';
+      if (rowValues[8] !== undefined && rowValues[8] !== null) {
+        canal = String(rowValues[8] || 'Não informado').trim();
+      }
+      
+      // Data (coluna J - índice 9)
+      let dataFormatada = new Date().toLocaleDateString('pt-BR');
+      if (rowValues[9] !== undefined && rowValues[9] !== null) {
+        const dataValue = rowValues[9];
+        if (typeof dataValue === 'number' && dataValue > 40000 && dataValue < 50000) {
+          const excelDate = new Date((dataValue - 25569) * 86400 * 1000);
+          dataFormatada = excelDate.toLocaleDateString('pt-BR');
+        } else if (typeof dataValue === 'string' && dataValue.includes('/')) {
+          dataFormatada = dataValue;
+        } else if (typeof dataValue === 'string' && dataValue.trim() !== '') {
+          dataFormatada = dataValue;
+        }
+      }
+
+      const processedItem = {
+        id: index + 1,
+        codigo: codigo,
+        cliente: cliente,
+        valor: valorRecebido,
+        data: dataFormatada,
+        formaPagamento: formaPagamento,
+        canal: canal
+      };
+      
+      console.log(`ITEM FINAL PROCESSADO ${index + 1}:`, processedItem);
+      return processedItem;
+    }).filter(item => item.valor > 0);
+
+    console.log("\n=== RESULTADO FINAL ===");
+    console.log("Dados processados finais:", processedData);
+    console.log("Total de vendas válidas:", processedData.length);
+    
+    const totalCalculado = processedData.reduce((total, item) => total + Number(item.valor), 0);
+    console.log("TOTAL CALCULADO:", totalCalculado);
+    console.log("=== FIM DO PROCESSAMENTO ===\n");
+    
+    return processedData;
+  };
+
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      console.log("Arquivo selecionado:", file.name, "Tipo:", file.type);
+      
+      if (file.type.includes('sheet') || file.name.endsWith('.xls') || file.name.endsWith('.xlsx')) {
+        const reader = new FileReader();
+        
+        reader.onload = (e) => {
+          try {
+            const result = e.target?.result;
+            if (!result) {
+              throw new Error("Falha ao ler o arquivo");
+            }
+            
+            const data = new Uint8Array(result as ArrayBuffer);
+            const workbook = XLSX.read(data, { type: 'array' });
+            
+            const worksheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[worksheetName];
+            
+            const jsonData = XLSX.utils.sheet_to_json(worksheet);
+            
+            if (jsonData.length === 0) {
+              toast({
+                title: "Planilha vazia",
+                description: "A planilha não contém dados válidos.",
+                variant: "destructive",
+              });
+              return;
+            }
+
+            const processedData = processExcelData(jsonData, file.name);
+            
+            if (processedData.length === 0) {
+              toast({
+                title: "Nenhum dado válido encontrado",
+                description: "Verifique se a planilha contém dados de vendas válidos.",
+                variant: "destructive",
+              });
+              return;
+            }
+
+            setData(processedData);
+            setFilteredData(processedData);
+            setHasUploadedFile(true);
+            
+            toast({
+              title: "Arquivo carregado com sucesso!",
+              description: `${file.name} foi processado. ${processedData.length} vendas encontradas.`,
+            });
+            
+          } catch (error) {
+            console.error("Erro ao processar arquivo:", error);
+            toast({
+              title: "Erro ao processar arquivo",
+              description: "Verifique se o arquivo Excel está no formato correto.",
+              variant: "destructive",
+            });
+          }
+        };
+        
+        reader.readAsArrayBuffer(file);
+      } else {
+        toast({
+          title: "Formato de arquivo inválido",
+          description: "Por favor, selecione um arquivo Excel (.xls ou .xlsx)",
+          variant: "destructive",
+        });
+      }
     }
   };
 
-  const handleChartClick = (paymentMethod: string) => {
+  const applyFilters = () => {
+    let filtered = data;
+    
+    if (selectedPaymentMethod !== "all") {
+      filtered = filtered.filter(item => item.formaPagamento === selectedPaymentMethod);
+    }
+    
+    if (selectedChannel !== "all") {
+      filtered = filtered.filter(item => item.canal === selectedChannel);
+    }
+    
+    if (selectedDate === "custom" && dateRange.start && dateRange.end) {
+      filtered = filtered.filter(item => {
+        const itemDate = new Date(item.data.split('/').reverse().join('-'));
+        const startDate = new Date(dateRange.start);
+        const endDate = new Date(dateRange.end);
+        return itemDate >= startDate && itemDate <= endDate;
+      });
+    } else if (selectedDate !== "all" && selectedDate !== "custom") {
+      filtered = filtered.filter(item => item.data === selectedDate);
+    }
+    
+    setFilteredData(filtered);
+  };
+
+  const resetFilters = () => {
+    setSelectedPaymentMethod("all");
+    setSelectedChannel("all");
+    setSelectedDate("all");
+    setDateRange({ start: "", end: "" });
+    setFilteredData(data);
+  };
+
+  const handleChartClick = (paymentMethod) => {
     const details = filteredData.filter(item => item.formaPagamento === paymentMethod);
     setSelectedPaymentDetails(details);
     setIsModalOpen(true);
   };
 
+  const getPaymentMethodSummary = () => {
+    const summary = {};
+    filteredData.forEach(item => {
+      if (!summary[item.formaPagamento]) {
+        summary[item.formaPagamento] = 0;
+      }
+      const valorNumerico = Number(item.valor) || 0;
+      summary[item.formaPagamento] += valorNumerico;
+    });
+    
+    console.log("Resumo por forma de pagamento:", summary);
+    
+    return Object.entries(summary).map(([name, value]) => ({ 
+      name, 
+      value: Number(value) 
+    }));
+  };
+
+  const getDailySales = () => {
+    const dailySales = {};
+    filteredData.forEach(item => {
+      if (!dailySales[item.data]) {
+        dailySales[item.data] = 0;
+      }
+      const valorNumerico = Number(item.valor) || 0;
+      dailySales[item.data] += valorNumerico;
+    });
+    return Object.entries(dailySales).map(([date, total]) => ({ date, total }));
+  };
+
+  const getTotalSales = () => {
+    const total = filteredData.reduce((total, item) => {
+      const valorNumerico = Number(item.valor) || 0;
+      return total + valorNumerico;
+    }, 0);
+    
+    console.log("Total de vendas calculado:", total);
+    console.log("Dados filtrados para cálculo:", filteredData.map(item => ({ codigo: item.codigo, valor: item.valor })));
+    
+    return total;
+  };
+
+  const paymentMethods = [...new Set(data.map(item => item.formaPagamento))];
+  const channels = [...new Set(data.map(item => item.canal))];
+  const dates = [...new Set(data.map(item => item.data))].sort();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 p-4 sm:p-6 transition-colors">
@@ -93,14 +391,6 @@ const Index = () => {
           dataLength={data.length}
         />
 
-        {/* Loading State */}
-        {isProcessing && (
-          <div className="flex items-center justify-center p-8">
-            <LoadingSpinner size="lg" />
-            <span className="ml-3 text-muted-foreground">Processando arquivo...</span>
-          </div>
-        )}
-
         {/* Dashboard */}
         {hasUploadedFile && data.length > 0 && (
           <>
@@ -109,49 +399,82 @@ const Index = () => {
               paymentMethods={paymentMethods}
               channels={channels}
               dates={dates}
-              selectedPaymentMethod={filters.paymentMethod}
-              selectedChannel={filters.channel}
-              selectedDate={filters.date}
-              dateRange={filters.dateRange}
-              onPaymentMethodChange={(value) => updateFilters({ paymentMethod: value })}
-              onChannelChange={(value) => updateFilters({ channel: value })}
-              onDateChange={(value) => updateFilters({ date: value })}
-              onDateRangeChange={(value) => updateFilters({ dateRange: value })}
-              onApplyFilters={() => {}} // Filtros aplicados automaticamente via useMemo
+              selectedPaymentMethod={selectedPaymentMethod}
+              selectedChannel={selectedChannel}
+              selectedDate={selectedDate}
+              dateRange={dateRange}
+              onPaymentMethodChange={setSelectedPaymentMethod}
+              onChannelChange={setSelectedChannel}
+              onDateChange={setSelectedDate}
+              onDateRangeChange={setDateRange}
+              onApplyFilters={applyFilters}
               onResetFilters={resetFilters}
             />
 
-            {/* Métricas de Vendas */}
-            <SalesMetrics
-              totalSales={totalSales}
-              numberOfSales={filteredData.length}
-              averageTicket={averageTicket}
-              uniqueClients={uniqueClients}
-            />
+            {/* Resumo Geral */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+              <Card className="bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-blue-100 text-sm">Total de Vendas</p>
+                      <h3 className="text-2xl sm:text-3xl font-bold">
+                        R$ {getTotalSales().toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </h3>
+                    </div>
+                    <DollarSign className="h-8 w-8 sm:h-12 sm:w-12 text-blue-200" />
+                  </div>
+                </CardContent>
+              </Card>
 
-            {/* Controles de Exportação */}
-            <ExportControls
-              filteredData={filteredData}
-              paymentSummary={paymentMethodSummary}
-              dailySales={dailySales}
-              totalSales={totalSales}
-            />
+              <Card className="bg-gradient-to-r from-green-600 to-green-700 text-white">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-green-100 text-sm">Número de Vendas</p>
+                      <h3 className="text-2xl sm:text-3xl font-bold">{filteredData.length}</h3>
+                    </div>
+                    <TrendingUp className="h-8 w-8 sm:h-12 sm:w-12 text-green-200" />
+                  </div>
+                </CardContent>
+              </Card>
 
-            {/* Charts Grid */}
+              <Card className="bg-gradient-to-r from-purple-600 to-purple-700 text-white">
+                <CardContent className="p-4 sm:p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-purple-100 text-sm">Ticket Médio</p>
+                      <h3 className="text-2xl sm:text-3xl font-bold">
+                        R$ {filteredData.length > 0 ? (getTotalSales() / filteredData.length).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}
+                      </h3>
+                    </div>
+                    <BarChart3 className="h-8 w-8 sm:h-12 sm:w-12 text-purple-200" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Gráficos Principais */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               <SalesChart 
-                data={paymentMethodSummary} 
+                data={getPaymentMethodSummary()} 
                 onBarClick={handleChartClick}
               />
-              <TrendChart data={dailySales} />
-              <PieChartComponent data={paymentMethodSummary} />
+              <PieChartComponent 
+                data={getPaymentMethodSummary()}
+              />
+            </div>
+
+            {/* Análises Avançadas */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+              <TrendChart data={getDailySales()} />
               <SeasonalityChart data={filteredData} />
             </div>
 
-            {/* Additional Analytics */}
+            {/* Comparativo e Ranking */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-              <CustomerRanking data={filteredData} />
               <MonthlyComparison data={filteredData} />
+              <CustomerRanking data={filteredData} />
             </div>
 
             {/* Modal de Detalhes */}
